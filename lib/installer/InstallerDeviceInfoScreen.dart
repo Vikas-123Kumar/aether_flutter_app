@@ -10,13 +10,18 @@ import 'package:untitled/pairdevice/ConnectScreen.dart';
 import '../authentication/NewLoginScreen.dart';
 import '../authentication/model/DeviceDataModel.dart';
 import '../authentication/rest/APIService.dart';
+import 'TransferScreen.dart';
 
-class NewDeviceControlScreen extends StatefulWidget {
+class Installerdeviceinfoscreen extends StatefulWidget {
+  final String deviceId;
+
+  const Installerdeviceinfoscreen({super.key, required this.deviceId});
+
   @override
-  State<NewDeviceControlScreen> createState() => _ThermostatUIState();
+  State<Installerdeviceinfoscreen> createState() => _ThermostatUIState();
 }
 
-class _ThermostatUIState extends State<NewDeviceControlScreen> {
+class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
   String currentTemp = "0";
   String unit = "";
   int targetTemp = 52;
@@ -25,7 +30,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   String mode = "ECO"; // standard / eco / boost
   bool isLoading = false;
   bool isPowerOn = false;
-  bool isCheckingDevices = true;
+  bool isCheckingDevices = false;
   List<DeviceDataModel> deviceData = [];
   bool isDeviceActive = false;
   String device_name = "";
@@ -35,7 +40,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    loadUserDeviceList();
+    getDeviceData();
   }
 
   DeviceDataModel? getItem(String alias) {
@@ -48,6 +53,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
   Future<void> getDeviceData() async {
     try {
+      device_name = DeviceInformations.selectedDeviceName!;
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
       String deviceId = DeviceInformations.act_device_id;
@@ -109,69 +115,69 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     }
   }
 
-  Future<void> loadUserDeviceList() async {
-    try {
-      final response = await ApiService().get("listUserDevices");
-
-      final data = response.data;
-
-      print("Response Data => $data");
-
-      /// 🔐 HANDLE UNAUTHENTICATED
-      if (data["message"] == "Unauthenticated." || response.statusCode == 401) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => NewLoginScreen()),
-          (route) => false,
-        );
-        return;
-      }
-      if (response.statusCode == 200) {
-        List devices = data["devices"] ?? [];
-
-        /// NO DEVICE
-        if (devices.isEmpty) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const ConnectScreen()),
-          );
-          return;
-        }
-
-        /// FIRST DEVICE
-        Map firstDevice = devices[0];
-
-        DeviceInformations.selectedDeviceId = firstDevice["device_id"]
-            .toString();
-        setState(() {
-          isDeviceActive = firstDevice["is_online"] == 1;
-          print("device status$isDeviceActive");
-        });
-
-        DeviceInformations.selectedSerialNumber = firstDevice["serial_number"]
-            .toString();
-
-        DeviceInformations.selectedDeviceName = firstDevice["name"] ?? "";
-
-        DeviceInformations.act_device_id = firstDevice["act_device_id"] ?? "";
-
-        print("Selected Device ID => ${DeviceInformations.selectedDeviceId}");
-
-        getDeviceData();
-
-        setState(() {
-          device_name=firstDevice["name"] ?? "";
-          isCheckingDevices = false;
-        });
-      }
-    } catch (e) {
-      print("Catch Error => $e");
-
-      setState(() {
-        isCheckingDevices = false;
-      });
-    }
-  }
+  // Future<void> loadUserDeviceList() async {
+  //   try {
+  //     final response = await ApiService().get("listUserDevices");
+  //
+  //     final data = response.data;
+  //
+  //     print("Response Data => $data");
+  //
+  //     /// 🔐 HANDLE UNAUTHENTICATED
+  //     if (data["message"] == "Unauthenticated." || response.statusCode == 401) {
+  //       Navigator.pushAndRemoveUntil(
+  //         context,
+  //         MaterialPageRoute(builder: (_) => NewLoginScreen()),
+  //             (route) => false,
+  //       );
+  //       return;
+  //     }
+  //     if (response.statusCode == 200) {
+  //       List devices = data["devices"] ?? [];
+  //
+  //       /// NO DEVICE
+  //       if (devices.isEmpty) {
+  //         Navigator.pushReplacement(
+  //           context,
+  //           MaterialPageRoute(builder: (_) => const ConnectScreen()),
+  //         );
+  //         return;
+  //       }
+  //
+  //       /// FIRST DEVICE
+  //       Map firstDevice = devices[0];
+  //
+  //       DeviceInformations.selectedDeviceId = firstDevice["device_id"]
+  //           .toString();
+  //       setState(() {
+  //         isDeviceActive = firstDevice["is_online"] == 1;
+  //         print("device status$isDeviceActive");
+  //       });
+  //
+  //       DeviceInformations.selectedSerialNumber = firstDevice["serial_number"]
+  //           .toString();
+  //
+  //       DeviceInformations.selectedDeviceName = firstDevice["name"] ?? "";
+  //
+  //       DeviceInformations.act_device_id = firstDevice["act_device_id"] ?? "";
+  //
+  //       print("Selected Device ID => ${DeviceInformations.selectedDeviceId}");
+  //
+  //       getDeviceData();
+  //
+  //       setState(() {
+  //         device_name=firstDevice["name"] ?? "";
+  //         isCheckingDevices = false;
+  //       });
+  //     }
+  //   } catch (e) {
+  //     print("Catch Error => $e");
+  //
+  //     setState(() {
+  //       isCheckingDevices = false;
+  //     });
+  //   }
+  // }
 
   Future<void> updateMode(String mode) async {
     String device_id = DeviceInformations.act_device_id;
@@ -335,45 +341,76 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 12),
+
                   Row(
                     children: [
-                      /// Logo
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          image: DecorationImage(
-                            image: AssetImage("assets/aether_4.png"),
-                            fit: BoxFit.cover,
-                          ),
+                      /// Left Section
+                      Expanded(
+                        child: Row(
+                          children: [
+                            /// Logo
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                image: DecorationImage(
+                                  image: AssetImage("assets/aether_4.png"),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(width: 12),
+
+                            /// Text Column
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "Device Name",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 2),
+
+                                Text(
+                                  device_name,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      /// Text Column (Top + Bottom)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          /// Top Text
-                          const Text(
-                            "Device Name",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
 
-                          const SizedBox(height: 2),
-                          /// Bottom Text
-                          Text(
-                            device_name,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
+                      /// Right Button
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => TransferScreen(),
                             ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                        ],
+                        ),
+                        child: const Text(
+                          "Transfer",
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ],
                   ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:untitled/installer/InstallerDeviceInfoScreen.dart';
 import 'package:untitled/pairdevice/ConnectScreen.dart';
 
 import '../DeviceInformations.dart';
@@ -80,8 +81,8 @@ class _DashboardScreenState extends State<Installerlist> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              _headerCard(),
-              const SizedBox(height: 16),
+              // _headerCard(),
+              // const SizedBox(height: 16),
               _statsRow(),
               const SizedBox(height: 16),
               _linkDeviceCard(context),
@@ -102,10 +103,28 @@ class _DashboardScreenState extends State<Installerlist> {
                       )
                     : ListView.builder(
                         itemCount: devices.length,
-                        itemBuilder: (context, index) {
-                          final device = devices[index];
-                          return _deviceCard(device);
-                        },
+                  itemBuilder: (context, index) {
+                    final device = devices[index];
+
+                    return GestureDetector(
+                      onTap: () {
+                        String deviceId = device["act_device_id"].toString();
+                        String device_name = device["name"].toString();
+                        String serial_number = device["device_id"].toString();
+                        DeviceInformations.act_device_id=deviceId;
+                        DeviceInformations.selectedDeviceName=device_name;
+                        DeviceInformations.selectedSerialNumber=serial_number;
+                        // Example navigation
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => Installerdeviceinfoscreen(deviceId: deviceId),
+                          ),
+                        );
+                      },
+                      child: _deviceCard(device),
+                    );
+                  },
                       ),
               ),
             ],
@@ -170,7 +189,7 @@ class _DashboardScreenState extends State<Installerlist> {
       children: [
         Expanded(child: _statCard("SYSTEMS",totalDevices, "$onlineDevices online")),
         const SizedBox(width: 10),
-        Expanded(child: _statCard("OPEN ALERTS", 5, "3 need attention")),
+        Expanded(child: _statCard("OPEN ALERTS", 0, "0 need attention")),
       ],
     );
   }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:untitled/DeviceInformations.dart';
+
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
 
@@ -13,8 +15,22 @@ class _TransferScreenState extends State<TransferScreen> {
   final TextEditingController _contactController = TextEditingController();
   bool _isEmailSelected = true;
   bool _isLoading = false;
-  String device_name = "Aether Home Heat Pump";
-  String model = "Aether Home 270L - AE-HP-2402-7841";
+  String device_name = "";
+  String model = "";
+  String device_id = "";
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    getInfo();
+  }
+
+  void getInfo() {
+    device_name=DeviceInformations.selectedDeviceName!;
+    model=DeviceInformations.selectedSerialNumber!;
+    device_id=DeviceInformations.act_device_id!;
+  }
 
   Future<void> _transferDevice() async {
     if (_contactController.text.isEmpty) {
