@@ -10,6 +10,7 @@ import '../authentication/rest/APIService.dart';
 
 import '../erroralert/AlertsScreen.dart';
 import '../installer/InstallerList.dart';
+import '../installer/InstallerProfile.dart';
 import 'NewDeviceControlScreen.dart';
 
 
@@ -22,11 +23,10 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
+  String roleType = "end_user";
 
   Widget _getPage(int index) {
-
     switch (index) {
-
       case 0:
         return NewDeviceControlScreen();
 
@@ -34,7 +34,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return ScheduleScreen();
 
       case 2:
-        return Installerlist();
+        return AlertsScreen();
 
       case 3:
         return NewProfileScreen();
@@ -43,18 +43,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return NewDeviceControlScreen();
     }
   }
+  Future<void> loadRole() async {
+    final prefs = await SharedPreferences.getInstance();
 
+    setState(() {
+      roleType = prefs.getString("current_role") ?? "installer";
+    });
+  }
+  List<Widget> getPages() {
+    if (roleType == "installer") {
+      return [
+        Installerlist(),
+        Installerprofile(),
+      ];
+    }
+
+    return [
+      NewDeviceControlScreen(),
+      ScheduleScreen(),
+      AlertsScreen(),
+      NewProfileScreen(),
+    ];
+  }
+
+  List<BottomNavigationBarItem> getBottomItems() {
+    if (roleType == "installer") {
+      return const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          label: "Home",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person),
+          label: "Profile",
+        ),
+      ];
+    }
+
+    return const [
+      BottomNavigationBarItem(
+        icon: Icon(Icons.home_outlined),
+        label: 'Home',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.calendar_month_outlined),
+        label: 'Schedule',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.notifications_none),
+        label: 'Error',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.person),
+        label: 'Me',
+      ),
+    ];
+  }
+  @override
+  void initState() {
+    super.initState();
+    loadRole();
+  }
   @override
   Widget build(BuildContext context) {
+    final pages = getPages();
+
     return Scaffold(
       body: SafeArea(
-        // ✅ ADD THIS
-        child: _getPage(_currentIndex),
+        child: pages[_currentIndex],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
-          print("Clicked: $index");
           setState(() {
             _currentIndex = index;
           });
@@ -63,21 +123,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         unselectedItemColor: Colors.white54,
         backgroundColor: Colors.black,
         type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_month_outlined),
-            label: 'Schedule',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_none),
-            label: 'Error',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Me'),
-        ],
+        items: getBottomItems(),
       ),
     );
   }

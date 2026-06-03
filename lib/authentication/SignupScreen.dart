@@ -17,7 +17,10 @@ class Signupscreen extends StatefulWidget {
 class _SignupscreenState extends State<Signupscreen> {
   bool isPasswordVisible = false;
   final _formKey = GlobalKey<FormState>();
+  String selectedUserType = "end_user";
 
+  final installerIdController = TextEditingController();
+  final companyNameController = TextEditingController();
   final fullNameController = TextEditingController();
   final emailController = TextEditingController();
   final stateController = TextEditingController();
@@ -34,64 +37,93 @@ class _SignupscreenState extends State<Signupscreen> {
 
   // 🔥 API CALL
   Future<void> sendData() async {
-    final String name = fullNameController.text.trim();
-    final String email = emailController.text.trim();
-    final String password = passwordController.text.trim();
-    final String address = addressController.text.trim();
-    final String state = stateController.text.trim();
-    final String timeZone = timeZoneController.text.trim();
-    final String phone_number = phoneController.text.trim();
-
-    if (email.isEmpty ||
-        password.isEmpty ||
-        name.isEmpty ||
-        address.isEmpty ||
-        phone_number.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() => isLoading = true);
-    final api = ApiService();
+    final String name = fullNameController.text.trim();
+    final String email = emailController.text.trim();
+    final String password = passwordController.text.trim();
+    final String state = stateController.text.trim();
+    final String phoneNumber = phoneController.text.trim();
+
+    final String address = addressController.text.trim();
+    final String timeZone = timeZoneController.text.trim();
+
+    final String installerId = installerIdController.text.trim();
+    final String companyName = companyNameController.text.trim();
+
+    if (!acceptedTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please accept Terms and Privacy Policy")),
+      );
+      return;
+    }
+
+    if (selectedUserType == "end_user") {
+      if (address.isEmpty || timeZone.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please fill all End User fields")),
+        );
+        return;
+      }
+    }
+
+    if (selectedUserType == "installer") {
+      if (installerId.isEmpty || companyName.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Please fill Installer ID and Company Name"),
+          ),
+        );
+        return;
+      }
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
     try {
-      final body = {
+      final api = ApiService();
+
+      Map<String, dynamic> body = {
         "name": name,
         "state": state,
         "email": email,
         "password": password,
-        "phone_number": phone_number,
-        "address": address,
-        "timezone": timeZone,
-        "type": "end_user",
+        "phone_number": phoneNumber,
+        "type": selectedUserType,
       };
 
-      print("REQUEST JSON: $body");
+      if (selectedUserType == "end_user") {
+        body["address"] = address;
+        body["timezone"] = timeZone;
+      }
 
-      final response = await api.post("signUp", {
-        "name": name,
-        "state": state,
-        "email": email,
-        "password": password,
-        "phone_number": phone_number,
-        "address": address,
-        "timezone": timeZone,
-        "type": "end_user",
-      });
-      final responseOtp = await api.post("sendOtp", {
-        "state": state,
-        "email": email,
-      });
-      print("response $response");
-      print("response otp  $responseOtp");
+      if (selectedUserType == "installer") {
+        body["licence_no"] = installerId;
+        body["company_name"] = companyName;
+      }
 
-      setState(() => isLoading = false);
+      print("REQUEST JSON => $body");
+
+      final response = await api.post("signUp", body);
+
+      final responseOtp = await api.post("sendOtp", {"email": email});
+
+      print("Signup Response => $response");
+      print("OTP Response => $responseOtp");
+
+      setState(() {
+        isLoading = false;
+      });
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Success")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registration Successful")),
+        );
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => OtpScreen(email: email)),
@@ -99,14 +131,13 @@ class _SignupscreenState extends State<Signupscreen> {
       } else {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text("${response.data}")));
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => OtpScreen(email: email)),
-        );
+        ).showSnackBar(SnackBar(content: Text(response.data.toString())));
       }
     } catch (e) {
-      setState(() => isLoading = false);
+      setState(() {
+        isLoading = false;
+      });
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Exception: $e")));
@@ -131,7 +162,6 @@ class _SignupscreenState extends State<Signupscreen> {
               child: ListView(
                 children: [
                   const SizedBox(height: 20),
-
                   const Text(
                     "Create account",
                     style: TextStyle(
@@ -141,19 +171,117 @@ class _SignupscreenState extends State<Signupscreen> {
                     ),
                   ),
                   const SizedBox(height: 28),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedUserType = "end_user";
+                            });
+                          },
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: selectedUserType == "end_user"
+                                  ? Colors.blue
+                                  : const Color(0xFF121A2F),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                "End User",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
 
-                  _input(fullNameController, "Full name"),
-                  _input(emailController, "Email"),
-                  _input(stateController, "State"),
-                  _input(phoneController, "Phone"),
-                  _input(addressController, "Address"),
-                  _input(timeZoneController, "Time zone"),
+                      const SizedBox(width: 10),
 
-                  _passwordField(passwordController, "Password", true),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedUserType = "installer";
+                            });
+                          },
+                          child: Container(
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: selectedUserType == "installer"
+                                  ? Colors.blue
+                                  : const Color(0xFF121A2F),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                "Installer",
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _input(
+                    fullNameController,
+                    "Full Name",
+                    Icons.person_outline,
+                  ),
+
+                  _input(
+                    emailController,
+                    "Email",
+                    Icons.email_outlined,
+                  ),
+
+                  _input(
+                    stateController,
+                    "State",
+                    Icons.location_city_outlined,
+                  ),
+
+                  _input(
+                    phoneController,
+                    "Phone",
+                    Icons.phone_outlined,
+                  ),
+
+                  _input(
+                    addressController,
+                    "Address",
+                    Icons.home_outlined,
+                  ),
+
+                  _input(
+                    timeZoneController,
+                    "Time Zone",
+                    Icons.access_time_outlined,
+                  ),
+
+                  if (selectedUserType == "installer") ...[
+                    _input(
+                      installerIdController,
+                      "Installer ID",
+                      Icons.badge_outlined,
+                    ),
+
+                    _input(
+                      companyNameController,
+                      "Company Name",
+                      Icons.business_outlined,
+                    ),
+                  ],
+                  _passwordField(passwordController, "Password", true, Icons.lock,),
                   _passwordField(
                     confirmPasswordController,
                     "Confirm password",
                     false,
+                    Icons.lock,
                   ),
 
                   Row(
@@ -227,31 +355,63 @@ class _SignupscreenState extends State<Signupscreen> {
     );
   }
 
-  Widget _input(TextEditingController controller, String hint) {
+  Widget _input(
+      TextEditingController controller,
+      String hint,
+      IconData icon,
+      ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         controller: controller,
         style: const TextStyle(color: Colors.white),
-        validator: (v) => v!.isEmpty ? "Required" : null,
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return "Required";
+          }
+          return null;
+        },
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: const TextStyle(color: Colors.grey),
+
+          prefixIcon: Icon(
+            icon,
+            color: Colors.blueAccent,
+            size: 22,
+          ),
+
           filled: true,
           fillColor: const Color(0xFF121A2F),
+
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide.none,
+          ),
+
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: Colors.white.withOpacity(0.08),
+            ),
+          ),
+
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(
+              color: Colors.blueAccent,
+              width: 1.2,
+            ),
           ),
         ),
       ),
     );
   }
-
   Widget _passwordField(
     TextEditingController controller,
     String hint,
     bool isMain,
+      IconData icon,
   ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -270,6 +430,10 @@ class _SignupscreenState extends State<Signupscreen> {
           hintText: hint,
           hintStyle: const TextStyle(color: Colors.grey),
           filled: true,
+          prefixIcon: Icon(
+            icon,
+            color: Colors.blueAccent,
+          ),
           fillColor: const Color(0xFF121A2F),
           suffixIcon: IconButton(
             icon: Icon(

@@ -42,27 +42,32 @@ class _LoginScreenState extends State<NewLoginScreen> {
       final data = response.data;
 
       if (data["success"] == true) {
-        // ✅ SUCCESS
-        showSnack(context, data["message"],"success");
+        showSnack(context, data["message"], "success");
 
         String token = data["token"];
-        print("Token: $token");
+        int userId = data["user"]["id"];
+
         ApiService().setToken(token);
+
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString("token", data["token"]);
-        // Navigate
+
+        await prefs.setString("token", token);
+        await prefs.setInt("user_id", userId);
+        await prefs.setString("current_role", data["current_role"]);
+
+        print("User ID: $userId");
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => DashboardScreen()),
         );
       } else {
         // ❌ ERROR
-        showSnack(context, data["message"],"fail");
-
+        showSnack(context, data["message"], "fail");
       }
     } catch (e) {
       print("Error: $e");
-      showSnack(context, "Something went wrong","fail");
+      showSnack(context, "Something went wrong", "fail");
     }
   }
 
@@ -172,7 +177,7 @@ class _LoginScreenState extends State<NewLoginScreen> {
                                 color: Colors.white,
                               )
                             : const Text(
-                                "Sign in →",
+                                "Sign in",
                                 style: TextStyle(fontSize: 16),
                               ),
                       ),

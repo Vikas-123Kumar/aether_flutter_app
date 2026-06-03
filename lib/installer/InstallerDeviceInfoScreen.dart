@@ -115,70 +115,6 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
     }
   }
 
-  // Future<void> loadUserDeviceList() async {
-  //   try {
-  //     final response = await ApiService().get("listUserDevices");
-  //
-  //     final data = response.data;
-  //
-  //     print("Response Data => $data");
-  //
-  //     /// 🔐 HANDLE UNAUTHENTICATED
-  //     if (data["message"] == "Unauthenticated." || response.statusCode == 401) {
-  //       Navigator.pushAndRemoveUntil(
-  //         context,
-  //         MaterialPageRoute(builder: (_) => NewLoginScreen()),
-  //             (route) => false,
-  //       );
-  //       return;
-  //     }
-  //     if (response.statusCode == 200) {
-  //       List devices = data["devices"] ?? [];
-  //
-  //       /// NO DEVICE
-  //       if (devices.isEmpty) {
-  //         Navigator.pushReplacement(
-  //           context,
-  //           MaterialPageRoute(builder: (_) => const ConnectScreen()),
-  //         );
-  //         return;
-  //       }
-  //
-  //       /// FIRST DEVICE
-  //       Map firstDevice = devices[0];
-  //
-  //       DeviceInformations.selectedDeviceId = firstDevice["device_id"]
-  //           .toString();
-  //       setState(() {
-  //         isDeviceActive = firstDevice["is_online"] == 1;
-  //         print("device status$isDeviceActive");
-  //       });
-  //
-  //       DeviceInformations.selectedSerialNumber = firstDevice["serial_number"]
-  //           .toString();
-  //
-  //       DeviceInformations.selectedDeviceName = firstDevice["name"] ?? "";
-  //
-  //       DeviceInformations.act_device_id = firstDevice["act_device_id"] ?? "";
-  //
-  //       print("Selected Device ID => ${DeviceInformations.selectedDeviceId}");
-  //
-  //       getDeviceData();
-  //
-  //       setState(() {
-  //         device_name=firstDevice["name"] ?? "";
-  //         isCheckingDevices = false;
-  //       });
-  //     }
-  //   } catch (e) {
-  //     print("Catch Error => $e");
-  //
-  //     setState(() {
-  //       isCheckingDevices = false;
-  //     });
-  //   }
-  // }
-
   Future<void> updateMode(String mode) async {
     String device_id = DeviceInformations.act_device_id;
     final modeItem = getItem("mode");
@@ -453,9 +389,9 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
 
                               /// Toggle
                               GestureDetector(
-                                onTap: () {
-                                  togglePower(!isPowerOn);
-                                },
+                                // onTap: () {
+                                //   togglePower(!isPowerOn);
+                                // },
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 300),
                                   width: 45,
@@ -658,53 +594,53 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
                   const SizedBox(height: 30),
 
                   /// ➖ ➕ BUTTONS
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _circleBtn(Icons.remove, () {
-                        if (targetTemp >= 36) {
-                          updateTemperature(targetTemp - 1);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Minimum temperature is 35"),
-                            ),
-                          );
-                          return;
-                        }
-                      }),
-                      const SizedBox(width: 25),
-                      isUpdatingTemp
-                          ? const SizedBox(
-                              width: 30,
-                              height: 30,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 3,
-                              ),
-                            )
-                          : Text(
-                              "$targetTemp°C",
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                              ),
-                            ),
-                      const SizedBox(width: 25),
-                      _circleBtn(Icons.add, () {
-                        if (targetTemp <= 74) {
-                          updateTemperature(targetTemp + 1);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Maximum temperature is 75"),
-                            ),
-                          );
-                          return;
-                        }
-                      }),
-                    ],
-                  ),
+                  // Row(
+                  //   mainAxisAlignment: MainAxisAlignment.center,
+                  //   children: [
+                  //     _circleBtn(Icons.remove, () {
+                  //       if (targetTemp >= 36) {
+                  //         updateTemperature(targetTemp - 1);
+                  //       } else {
+                  //         ScaffoldMessenger.of(context).showSnackBar(
+                  //           const SnackBar(
+                  //             content: Text("Minimum temperature is 35"),
+                  //           ),
+                  //         );
+                  //         return;
+                  //       }
+                  //     }),
+                  //     const SizedBox(width: 25),
+                  //     isUpdatingTemp
+                  //         ? const SizedBox(
+                  //             width: 30,
+                  //             height: 30,
+                  //             child: CircularProgressIndicator(
+                  //               color: Colors.white,
+                  //               strokeWidth: 3,
+                  //             ),
+                  //           )
+                  //         : Text(
+                  //             "$targetTemp°C",
+                  //             style: const TextStyle(
+                  //               color: Colors.white,
+                  //               fontSize: 22,
+                  //             ),
+                  //           ),
+                  //     const SizedBox(width: 25),
+                  //     _circleBtn(Icons.add, () {
+                  //       if (targetTemp <= 74) {
+                  //         updateTemperature(targetTemp + 1);
+                  //       } else {
+                  //         ScaffoldMessenger.of(context).showSnackBar(
+                  //           const SnackBar(
+                  //             content: Text("Maximum temperature is 75"),
+                  //           ),
+                  //         );
+                  //         return;
+                  //       }
+                  //     }),
+                  //   ],
+                  // ),
 
                   const SizedBox(height: 30),
 
@@ -728,44 +664,6 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  /// 🔵 Round Button
-  Widget _circleBtn(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: isUpdatingTemp ? null : onTap,
-
-      child: Container(
-        width: 65,
-        height: 65,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            colors: [Color(0xFF4DA3FF), Color(0xFF2D6CDF)],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.blue.withOpacity(0.5),
-              blurRadius: 15,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-
-        child: Center(
-          child: isUpdatingTemp
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.5,
-                  ),
-                )
-              : Icon(icon, color: Colors.white, size: 28),
         ),
       ),
     );
@@ -842,7 +740,6 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
     }
 
     return GestureDetector(
-      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         width: 100,
@@ -896,35 +793,4 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
     );
   }
 
-  /// 📦 Info Card
-  Widget _infoCard(String title, String subtitle) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        color: Colors.white.withOpacity(0.08),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.ac_unit, color: Colors.white),
-          const SizedBox(width: 15),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(color: Colors.white.withOpacity(0.6)),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }

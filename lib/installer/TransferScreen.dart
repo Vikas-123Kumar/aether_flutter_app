@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import 'package:untitled/DeviceInformations.dart';
@@ -29,58 +30,54 @@ class _TransferScreenState extends State<TransferScreen> {
   void getInfo() {
     device_name=DeviceInformations.selectedDeviceName!;
     model=DeviceInformations.selectedSerialNumber!;
-    device_id=DeviceInformations.act_device_id!;
+    device_id=DeviceInformations.selectedSerialNumber!;
   }
 
-  Future<void> _transferDevice() async {
-    if (_contactController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isEmailSelected
-                ? 'Please enter an email address'
-                : 'Please enter a phone number',
-          ),
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final response = await http.post(
-        Uri.parse('https://your-api-endpoint.com/transfer'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'deviceId': 'AE-HP-2402-7841',
-          'type': _isEmailSelected ? 'email' : 'sms',
-          'contact': _contactController.text,
-        }),
-      );
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Transfer initiated successfully.')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to initiate transfer.')),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+  Future<void> sendInvite() async {
+    if ( _contactController.text.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ).showSnackBar(const SnackBar(content: Text("Fill all fields")));
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String token = prefs.getString("token") ?? "";
+      final response = await http.post(
+        Uri.parse("https://aetherone.com.au/api/v1/inviteUser"),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({
+          "email": _contactController.text,
+          "permission": "",
+          "device_id": device_id,
+        }),
+      );
+      print(response.body);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final apiMsg = data['message'] ?? "Something went wrong";
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(apiMsg)),
+        );
+      } else {
+        final data = jsonDecode(response.body);
+        final apiMsg = data['message'] ?? "Something went wrong";
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar( SnackBar(content: Text(apiMsg)));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Error sending invite")));
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -153,63 +150,63 @@ class _TransferScreenState extends State<TransferScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      elevation: 0,
-                      backgroundColor: _isEmailSelected
-                          ? const Color(0xFF00B4D8)
-                          : const Color(0xFF131C31),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isEmailSelected = true;
-                      });
-                    },
-                    child: Text(
-                      'Email',
-                      style: TextStyle(
-                        color: _isEmailSelected ? Colors.white : Colors.grey,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      elevation: 0,
-                      backgroundColor: !_isEmailSelected
-                          ? const Color(0xFF00B4D8)
-                          : const Color(0xFF131C31),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isEmailSelected = false;
-                      });
-                    },
-                    child: Text(
-                      'SMS',
-                      style: TextStyle(
-                        color: !_isEmailSelected ? Colors.white : Colors.grey,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            // Row(
+            //   children: [
+            //     Expanded(
+            //       child: ElevatedButton(
+            //         style: ElevatedButton.styleFrom(
+            //           elevation: 0,
+            //           backgroundColor: _isEmailSelected
+            //               ? const Color(0xFF00B4D8)
+            //               : const Color(0xFF131C31),
+            //           shape: RoundedRectangleBorder(
+            //             borderRadius: BorderRadius.circular(10.0),
+            //           ),
+            //           padding: const EdgeInsets.symmetric(vertical: 14),
+            //         ),
+            //         onPressed: () {
+            //           setState(() {
+            //             _isEmailSelected = true;
+            //           });
+            //         },
+            //         child: Text(
+            //           'Email',
+            //           style: TextStyle(
+            //             color: _isEmailSelected ? Colors.white : Colors.grey,
+            //             fontWeight: FontWeight.bold,
+            //           ),
+            //         ),
+            //       ),
+            //     ),
+            //     const SizedBox(width: 12),
+            //     Expanded(
+            //       child: ElevatedButton(
+            //         style: ElevatedButton.styleFrom(
+            //           elevation: 0,
+            //           backgroundColor: !_isEmailSelected
+            //               ? const Color(0xFF00B4D8)
+            //               : const Color(0xFF131C31),
+            //           shape: RoundedRectangleBorder(
+            //             borderRadius: BorderRadius.circular(10.0),
+            //           ),
+            //           padding: const EdgeInsets.symmetric(vertical: 14),
+            //         ),
+            //         onPressed: () {
+            //           setState(() {
+            //             _isEmailSelected = false;
+            //           });
+            //         },
+            //         child: Text(
+            //           'SMS',
+            //           style: TextStyle(
+            //             color: !_isEmailSelected ? Colors.white : Colors.grey,
+            //             fontWeight: FontWeight.bold,
+            //           ),
+            //         ),
+            //       ),
+            //     ),
+            //   ],
+            // ),
             const SizedBox(height: 24),
             Text(
               _isEmailSelected ? 'CUSTOMER EMAIL' : 'CUSTOMER PHONE',
@@ -265,7 +262,7 @@ class _TransferScreenState extends State<TransferScreen> {
                     borderRadius: BorderRadius.circular(12.0),
                   ),
                 ),
-                onPressed: _isLoading ? null : _transferDevice,
+                onPressed: _isLoading ? null : sendInvite,
                 child: _isLoading
                     ? const SizedBox(
                         width: 20,

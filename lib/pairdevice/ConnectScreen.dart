@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import 'package:untitled/pairdevice/ConnectedScreen.dart';
@@ -51,11 +52,18 @@ class _ConnectScreenState extends State<ConnectScreen> {
     await syncDevice(serialNumber);
   }
   Future<void> syncDevice(String deviceId) async {
+    final prefs = await SharedPreferences.getInstance();
+   int user_id = prefs.getInt("user_id") ??0;
+    String currentRole = prefs.getString("current_role") ?? "";
     try {
+      String apiEndpoint = currentRole == "installer"
+          ? "syncDeviceByInstaller"
+          : "syncDevice";
       final response = await ApiService().post(
-        "syncDevice",
+        apiEndpoint,
         {
           "device_id": deviceId,
+          "user_id": user_id.toString(),
         },
       );
 

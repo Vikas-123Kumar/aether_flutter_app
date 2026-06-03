@@ -34,7 +34,7 @@ class _DashboardScreenState extends State<Installerlist> {
   int onlineDevices = 0;
   Future<void> loadUserDeviceList() async {
     try {
-      final response = await ApiService().get("listUserDevices");
+      final response = await ApiService().get("listInstallerInstalledDevices");
 
       final data = response.data;
 
