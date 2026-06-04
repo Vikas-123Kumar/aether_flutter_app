@@ -108,12 +108,14 @@ class _DashboardScreenState extends State<Installerlist> {
 
                     return GestureDetector(
                       onTap: () {
-                        String deviceId = device["act_device_id"].toString();
+                        String deviceId = device["serial_number"].toString();
                         String device_name = device["name"].toString();
                         String serial_number = device["device_id"].toString();
+                        String is_online = device["is_online"].toString();
                         DeviceInformations.act_device_id=deviceId;
                         DeviceInformations.selectedDeviceName=device_name;
                         DeviceInformations.selectedSerialNumber=serial_number;
+                       DeviceInformations.is_online=is_online;
                         // Example navigation
                         Navigator.push(
                           context,
@@ -295,7 +297,7 @@ class _DashboardScreenState extends State<Installerlist> {
                   style: const TextStyle(color: Colors.white),
                 ),
                 Text(
-                  device["serial_number"] ?? "",
+                  device["device_id"] ?? "",
                   style: const TextStyle(color: Colors.grey),
                 ),
               ],

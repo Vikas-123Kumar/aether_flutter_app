@@ -54,8 +54,8 @@ class _LoginScreenState extends State<NewLoginScreen> {
         await prefs.setString("token", token);
         await prefs.setInt("user_id", userId);
         await prefs.setString("current_role", data["current_role"]);
-
-        print("User ID: $userId");
+        String role = data["current_role"];
+        print("User ID: $userId  $role");
 
         Navigator.pushReplacement(
           context,

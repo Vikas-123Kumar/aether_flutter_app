@@ -25,33 +25,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
   String roleType = "end_user";
 
-  Widget _getPage(int index) {
-    switch (index) {
-      case 0:
-        return NewDeviceControlScreen();
 
-      case 1:
-        return ScheduleScreen();
-
-      case 2:
-        return AlertsScreen();
-
-      case 3:
-        return NewProfileScreen();
-
-      default:
-        return NewDeviceControlScreen();
-    }
-  }
   Future<void> loadRole() async {
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
-      roleType = prefs.getString("current_role") ?? "installer";
+      roleType = prefs.getString("current_role") ?? "Installer";
     });
   }
   List<Widget> getPages() {
-    if (roleType == "installer") {
+    if (roleType == "Installer") {
       return [
         Installerlist(),
         Installerprofile(),
@@ -67,7 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   List<BottomNavigationBarItem> getBottomItems() {
-    if (roleType == "installer") {
+    if (roleType == "Installer") {
       return const [
         BottomNavigationBarItem(
           icon: Icon(Icons.home_outlined),

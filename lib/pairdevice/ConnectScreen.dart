@@ -36,7 +36,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
         "http://192.168.4.1/wifisave?s=${Uri.encodeComponent(ssid)}&p=${Uri.encodeComponent(password)}";
 
     try {
-
+      setState(() {
+        _isLoading = true;
+      });
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         print("Success: ${response.body}");
@@ -45,6 +47,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
       }
     } catch (e) {
       print("Error: $e");
+      setState(() {
+        _isLoading = false;
+      });
     }
     await Future.delayed(const Duration(seconds: 8));
 
@@ -56,7 +61,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
    int user_id = prefs.getInt("user_id") ??0;
     String currentRole = prefs.getString("current_role") ?? "";
     try {
-      String apiEndpoint = currentRole == "installer"
+      String apiEndpoint = currentRole == "Installer"
           ? "syncDeviceByInstaller"
           : "syncDevice";
       final response = await ApiService().post(
@@ -76,7 +81,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
 
       /// SUCCESS
       if (success == true) {
-
+        setState(() {
+          _isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message)),
         );
@@ -103,6 +110,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
             ),
           ),
         );
+        setState(() {
+          _isLoading = false;
+        });
       }
       else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -111,6 +121,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
       }
     } catch (e) {
       print("Sync Error => $e");
+      setState(() {
+        _isLoading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Sync Error: $e")),
       );
@@ -129,10 +142,6 @@ class _ConnectScreenState extends State<ConnectScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -201,25 +210,16 @@ class _ConnectScreenState extends State<ConnectScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          "",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
                         const Text(
-                          "Aether Home 270L - AE-HP-2402-7841",
-                          style: TextStyle(color: Colors.grey, fontSize: 10),
+                          "Aether Home",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
                             Container(
-                              width: 8,
-                              height: 8,
+                              width: 0,
+                              height: 0,
                               decoration: const BoxDecoration(
                                 color: Colors.green,
                                 shape: BoxShape.circle,

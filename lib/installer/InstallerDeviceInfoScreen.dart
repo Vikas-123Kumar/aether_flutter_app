@@ -57,6 +57,8 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
       String deviceId = DeviceInformations.act_device_id;
+
+      print("device in installer $deviceId");
       final response = await http.get(
         Uri.parse(
           "https://aetherone.com.au/api/v1/heat-pump-2/devices/$deviceId/current-data",
@@ -74,6 +76,9 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
         int length = dataList.length;
         print("list size$length");
         setState(() {
+          if(DeviceInformations.is_online=="1"){
+            isDeviceActive=true;
+          }
           deviceData = dataList
               .map((e) => DeviceDataModel.fromJson(e))
               .toList();
