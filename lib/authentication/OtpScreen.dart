@@ -64,14 +64,14 @@ class _OtpScreenState extends State<OtpScreen> {
       });
 
       final data = response.data;
-
-      if (data["success"] == true) {
-        // ✅ SUCCESS
+      if (data["message"] == "OTP verified successfully") {
         showSnack(context, data["message"], "success");
-        // Navigate
+
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => NewLoginScreen()),
+          MaterialPageRoute(
+            builder: (_) => const NewLoginScreen(),
+          ),
         );
       } else {
         // ❌ ERROR

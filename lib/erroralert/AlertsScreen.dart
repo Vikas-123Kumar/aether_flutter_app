@@ -100,11 +100,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          _box("CRITICAL", "1", Colors.red),
+          _box("CRITICAL", "0", Colors.red),
           const SizedBox(width: 10),
-          _box("CRITICAL", "1", Colors.orange),
+          _box("CRITICAL", "0", Colors.orange),
           const SizedBox(width: 10),
-          _box("CRITICAL", "1", Colors.blue),
+          _box("CRITICAL", "0", Colors.blue),
         ],
       ),
     );
