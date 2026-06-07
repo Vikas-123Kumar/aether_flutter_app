@@ -137,16 +137,47 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       });
     }
   }
-  void moveConnect(){
+
+  void moveConnect() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const ConnectScreen()),
     );
   }
 
+  Future<Map<String, dynamic>> deleteUserFromDevice({
+    required String deviceId,
+    required String userId,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String token = prefs.getString("token") ?? "";
+
+      final response = await http.delete(
+        Uri.parse(
+          "https://aetherone.com.au/api/v1/deleteUserFromDevice",
+        ),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({"device_id": deviceId, "user_id": userId}),
+      );
+
+      final data = jsonDecode(response.body);
+
+      return {
+        "success": response.statusCode == 200,
+        "message": data["message"] ?? "Unknown error",
+      };
+    } catch (e) {
+      return {"success": false, "message": e.toString()};
+    }
+  }
+
   Future<void> logout() async {
     final api = ApiService();
-
     try {
       final response = await api.post("logout", {});
       final data = response.data;
@@ -164,7 +195,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => NewLoginScreen()),
-              (route) => false,
+          (route) => false,
         );
       } else {
         showSnack(context, data["message"], "fail");
@@ -263,21 +294,21 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                       ),
                       child: _isLoading
                           ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
                           : const Text(
-                        "Logout",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                              "Logout",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -385,7 +416,6 @@ class _ProfileScreenState extends State<NewProfileScreen> {
 
                   child: const Text(
                     "Active subscription",
-
                     style: TextStyle(color: Colors.greenAccent, fontSize: 10),
                   ),
                 ),
@@ -535,7 +565,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                               const SizedBox(width: 12),
                               GestureDetector(
                                 onTap: () {
-                                  // delete api
+                                  _showDeleteDialog(member);
                                 },
                                 child: const Icon(
                                   Icons.delete_outline,
@@ -555,6 +585,143 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                 ),
         ),
       ],
+    );
+  }
+
+  void _showDeleteDialog(FamilyMember member) {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161F33),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 65,
+                  height: 65,
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.person_remove_alt_1_rounded,
+                    color: Colors.red,
+                    size: 32,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                const Text(
+                  "Remove User",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                Text(
+                  "Are you sure you want to remove\n${member.name} from this device?",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: Colors.white.withOpacity(0.15),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text(
+                          "Cancel",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () async {
+                          Navigator.pop(context);
+
+                          final result = await deleteUserFromDevice(
+                            deviceId: DeviceInformations.selectedDeviceId,
+                            userId: member.id.toString(),
+                          );
+
+                          if (!mounted) return;
+
+                          scaffoldMessenger.showSnackBar(
+                            SnackBar(
+                              backgroundColor:
+                              result["success"] ? Colors.green : Colors.red,
+                              content: Text(result["message"]),
+                            ),
+                          );
+
+                          if (result["success"]) {
+                            getFamilyMembers();
+                          }
+                        },
+                        child: const Text(
+                          "Remove",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

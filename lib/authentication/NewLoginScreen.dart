@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:untitled/authentication/SetPasswordScreen.dart';
 import 'package:untitled/authentication/rest/APIService.dart';
 
 import '../common_function/SnackBar.dart';
@@ -97,16 +98,7 @@ class _LoginScreenState extends State<NewLoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 20),
-
-                    /// Back Button
-                    CircleAvatar(
-                      backgroundColor: Colors.white.withOpacity(0.1),
-                      child: const Icon(Icons.arrow_back, color: Colors.white),
-                    ),
-
-                    const SizedBox(height: 30),
-
+                    const SizedBox(height:50),
                     /// Icon Box
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -144,7 +136,7 @@ class _LoginScreenState extends State<NewLoginScreen> {
                     /// Email Field
                     buildField(
                       controller: emailController,
-                      hint: "alex@home.com",
+                      hint: "Enter address",
                       icon: Icons.email,
                     ),
 
@@ -153,11 +145,32 @@ class _LoginScreenState extends State<NewLoginScreen> {
                     /// Password Field
                     buildField(
                       controller: passwordController,
-                      hint: "******",
+                      hint: "password",
                       icon: Icons.lock,
                       isPassword: true,
                     ),
-
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SetPasswordScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          "Forgot Password?",
+                          style: TextStyle(
+                            color: Color(0xFF00B4D8),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 25),
 
                     /// Login Button
@@ -178,7 +191,7 @@ class _LoginScreenState extends State<NewLoginScreen> {
                               )
                             : const Text(
                                 "Sign in",
-                                style: TextStyle(fontSize: 16),
+                                style: TextStyle(fontSize: 16,color: Colors.white,fontWeight: FontWeight.bold),
                               ),
                       ),
                     ),
@@ -253,9 +266,9 @@ class _LoginScreenState extends State<NewLoginScreen> {
         obscureText: isPassword,
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: Colors.white70),
+          prefixIcon: Icon(icon,  color: Colors.blueAccent),
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white54),
+          hintStyle: const TextStyle( color: Colors.blueAccent),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 18),
         ),

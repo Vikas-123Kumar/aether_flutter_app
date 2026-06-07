@@ -10,6 +10,7 @@ import 'package:untitled/pairdevice/ConnectScreen.dart';
 import '../authentication/NewLoginScreen.dart';
 import '../authentication/model/DeviceDataModel.dart';
 import '../authentication/rest/APIService.dart';
+import '../device_details/ThermostateDial.dart';
 import 'TransferScreen.dart';
 
 class Installerdeviceinfoscreen extends StatefulWidget {
@@ -532,68 +533,8 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
                   const SizedBox(height: 20),
 
                   /// 🔵 BIG GLOWING CIRCLE
-                  Container(
-                    width: 250,
-                    height: 250,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const RadialGradient(
-                        colors: [
-                          Color(0xFF1E4FA3),
-                          Color(0xFF0B2A5B),
-                          Color(0xFF050F1E),
-                        ],
-                        stops: [0.2, 0.6, 1],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blueAccent.withOpacity(0.3),
-                          blurRadius: 50,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // outer glow ring
-                        Container(
-                          width: 250,
-                          height: 250,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.blueAccent.withOpacity(0.2),
-                              width: 8,
-                            ),
-                          ),
-                        ),
-
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "MAINTAINING",
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.6),
-                                letterSpacing: 2,
-                                fontSize: 12,
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            Text(
-                              "$currentTemp$unit",
-                              style: const TextStyle(
-                                fontSize: 60,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                          ],
-                        ),
-                      ],
-                    ),
+                  ThermostatDial(
+                    temperature: currentTemp,
                   ),
 
                   const SizedBox(height: 30),

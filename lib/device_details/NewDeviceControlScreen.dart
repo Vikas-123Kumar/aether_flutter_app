@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sleek_circular_slider/sleek_circular_slider.dart';
 import 'package:untitled/DeviceInformations.dart';
 import 'package:untitled/authentication/model/Device.dart';
 import 'package:untitled/pairdevice/ConnectScreen.dart';
@@ -10,6 +12,7 @@ import 'package:untitled/pairdevice/ConnectScreen.dart';
 import '../authentication/NewLoginScreen.dart';
 import '../authentication/model/DeviceDataModel.dart';
 import '../authentication/rest/APIService.dart';
+import 'ThermostateDial.dart';
 
 class NewDeviceControlScreen extends StatefulWidget {
   @override
@@ -29,13 +32,21 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   List<DeviceDataModel> deviceData = [];
   bool isDeviceActive = false;
   String device_name = "";
-
+  bool minusPressed = false;
+  bool plusPressed = false;
+  Timer? _deviceDataTimer;
   @override
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
     loadUserDeviceList();
+    _deviceDataTimer = Timer.periodic(
+      const Duration(seconds: 30),
+          (timer) {
+        getDeviceData();
+      },
+    );
   }
 
   DeviceDataModel? getItem(String alias) {
@@ -44,6 +55,11 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     } catch (e) {
       return null;
     }
+  }
+  @override
+  void dispose() {
+    _deviceDataTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> getDeviceData() async {
@@ -380,6 +396,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
                   /// 🔌 POWER SWITCH
                   SizedBox(height: 20),
+
                   Row(
                     children: [
                       /// POWER CARD
@@ -554,68 +571,8 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                   const SizedBox(height: 20),
 
                   /// 🔵 BIG GLOWING CIRCLE
-                  Container(
-                    width: 250,
-                    height: 250,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const RadialGradient(
-                        colors: [
-                          Color(0xFF1E4FA3),
-                          Color(0xFF0B2A5B),
-                          Color(0xFF050F1E),
-                        ],
-                        stops: [0.2, 0.6, 1],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blueAccent.withOpacity(0.3),
-                          blurRadius: 50,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // outer glow ring
-                        Container(
-                          width: 250,
-                          height: 250,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.blueAccent.withOpacity(0.2),
-                              width: 8,
-                            ),
-                          ),
-                        ),
-
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "MAINTAINING",
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.6),
-                                letterSpacing: 2,
-                                fontSize: 12,
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            Text(
-                              "$currentTemp$unit",
-                              style: const TextStyle(
-                                fontSize: 60,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                          ],
-                        ),
-                      ],
-                    ),
+                   ThermostatDial(
+                    temperature: currentTemp,
                   ),
 
                   const SizedBox(height: 30),
@@ -624,48 +581,96 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _circleBtn(Icons.remove, () {
-                        if (targetTemp >= 36) {
-                          updateTemperature(targetTemp - 1);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Minimum temperature is 35"),
+
+                      /// Minus Button
+                    _circleBtn(
+                    Icons.remove,
+                        () {
+                      if (targetTemp >= 36) {
+                        updateTemperature(targetTemp - 1);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Minimum temperature is 35"),
+                          ),
+                        );
+                      }
+                    },
+                    minusPressed,
+                        () => setState(() => minusPressed = true),
+                        () => setState(() => minusPressed = false),
+                  ),
+
+                      const SizedBox(width: 20),
+
+                      /// Target Container
+                      Container(
+                        width: 140,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xff0F2342),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(.08),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              "SET TARGET",
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 10,
+                                letterSpacing: 2,
+                              ),
                             ),
-                          );
-                          return;
-                        }
-                      }),
-                      const SizedBox(width: 25),
-                      isUpdatingTemp
-                          ? const SizedBox(
-                              width: 30,
-                              height: 30,
+
+                            const SizedBox(height: 4),
+
+                            isUpdatingTemp
+                                ? const SizedBox(
+                              width: 22,
+                              height: 22,
                               child: CircularProgressIndicator(
+                                strokeWidth: 2,
                                 color: Colors.white,
-                                strokeWidth: 3,
                               ),
                             )
-                          : Text(
+                                : Text(
                               "$targetTemp°C",
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 22,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                      const SizedBox(width: 25),
-                      _circleBtn(Icons.add, () {
-                        if (targetTemp <= 74) {
-                          updateTemperature(targetTemp + 1);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Maximum temperature is 75"),
-                            ),
-                          );
-                          return;
-                        }
-                      }),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(width: 20),
+
+                      /// Plus Button
+                      _circleBtn(
+                        Icons.add,
+                            () {
+                          if (targetTemp <= 74) {
+                            updateTemperature(targetTemp + 1);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Maximum temperature is 75"),
+                              ),
+                            );
+                          }
+                        },
+                        plusPressed,
+                            () => setState(() => plusPressed = true),
+                            () => setState(() => plusPressed = false),
+                      ),
                     ],
                   ),
 
@@ -695,45 +700,183 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       ),
     );
   }
-
-  /// 🔵 Round Button
-  Widget _circleBtn(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: isUpdatingTemp ? null : onTap,
-
-      child: Container(
-        width: 65,
-        height: 65,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            colors: [Color(0xFF4DA3FF), Color(0xFF2D6CDF)],
+  Widget targetTemperatureControl() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: 12,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xff0B1D3A),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: Colors.white.withOpacity(.08),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.3),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.blue.withOpacity(0.5),
-              blurRadius: 15,
-              offset: const Offset(0, 6),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            "SET TARGET",
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 10,
+              letterSpacing: 2,
             ),
-          ],
-        ),
+          ),
 
-        child: Center(
-          child: isUpdatingTemp
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.5,
-                  ),
-                )
-              : Icon(icon, color: Colors.white, size: 28),
-        ),
+          const SizedBox(height: 10),
+
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _tempButton(
+                icon: Icons.remove,
+                onTap: () {
+                  if (targetTemp >= 36) {
+                    updateTemperature(targetTemp - 1);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          "Minimum temperature is 35°C",
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+
+              const SizedBox(width: 20),
+
+              isUpdatingTemp
+                  ? const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xff53D6FF),
+                ),
+              )
+                  : Text(
+                "$targetTemp°C",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+
+              const SizedBox(width: 20),
+
+              _tempButton(
+                icon: Icons.add,
+                onTap: () {
+                  if (targetTemp <= 74) {
+                    updateTemperature(targetTemp + 1);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          "Maximum temperature is 75°C",
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
+  Widget _tempButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(50),
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xff11284A),
+          border: Border.all(
+            color: Colors.white.withOpacity(.08),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xff53D6FF).withOpacity(.15),
+              blurRadius: 10,
+            ),
+          ],
+        ),
+        child: Icon(
+          icon,
+          color: Colors.white,
+          size: 20,
+        ),
+      ),
+    );
+  }
+  /// 🔵 Round Button
+  Widget _circleBtn(
+      IconData icon,
+      VoidCallback onTap,
+      bool isPressed,
+      VoidCallback onPressDown,
+      VoidCallback onPressUp,
+      ) {
+    return GestureDetector(
+      onTapDown: (_) => onPressDown(),
+      onTapUp: (_) {
+        onPressUp();
+        onTap();
+      },
+      onTapCancel: onPressUp,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isPressed
+              ? const Color(0xff53D6FF)
+              : const Color(0xff0A1A33),
+          border: Border.all(
+            color: isPressed
+                ? Colors.white
+                : Colors.white.withOpacity(.08),
+          ),
+          boxShadow: isPressed
+              ? [
+            BoxShadow(
+              color: const Color(0xff53D6FF).withOpacity(.5),
+              blurRadius: 15,
+              spreadRadius: 2,
+            )
+          ]
+              : [],
+        ),
+        child: Icon(
+          icon,
+          color: isPressed ? Colors.black : Colors.white,
+          size: 26,
+        ),
+      ),
+    );
+  }
   /// 🔘 Mode Card
   Widget _modeCard(String text, VoidCallback onTap) {
     final isSelected = selectedMode == text;

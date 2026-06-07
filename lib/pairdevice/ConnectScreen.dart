@@ -140,6 +140,8 @@ class _ConnectScreenState extends State<ConnectScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0C101B),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
+        titleSpacing: 15,
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Column(

@@ -66,7 +66,6 @@ class _OtpScreenState extends State<OtpScreen> {
       final data = response.data;
       if (data["message"] == "OTP verified successfully") {
         showSnack(context, data["message"], "success");
-
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -82,24 +81,6 @@ class _OtpScreenState extends State<OtpScreen> {
       showSnack(context, "Something went wrong", "fail");
     }
   }
-
-  // Future<void> verifyOtp() async {
-  //   String otp = getOtp();
-  //
-  //   print("OTP: $otp");
-  //
-  //   // 🔥 Call your register API here
-  //   /*
-  //   await ApiService.register(
-  //     email: widget.email,
-  //     otp: otp,
-  //   );
-  //   */
-  //
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     const SnackBar(content: Text("OTP Verified")),
-  //   );
-  // }
 
   Future<void> resendOtp() async {
     print("Resend OTP");
