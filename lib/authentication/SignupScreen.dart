@@ -1,3 +1,4 @@
+import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -34,7 +35,36 @@ class _SignupscreenState extends State<Signupscreen> {
   bool obscurePassword = true;
   bool obscureConfirm = true;
   bool acceptedTerms = false;
+  List<dynamic> states = [];
+  @override
+  void initState() {
+    super.initState();
+    getStates();
+  }
+  Map<String, dynamic>? selectedState;
 
+  Future<void> getStates() async {
+    try {
+      final api = ApiService();
+
+      final response = await api.get("listState");
+
+      print("STATE RESPONSE => ${response.data}");
+
+      if (response.statusCode == 200) {
+        setState(() {
+          states = List<Map<String, dynamic>>.from(
+            response.data["states"] ?? [],
+          );
+        });
+
+        print("States Length => ${states.length}");
+        print("States Data => $states");
+      }
+    } catch (e) {
+      print("State API Error: $e");
+    }
+  }
   // 🔥 API CALL
   Future<void> sendData() async {
     if (!_formKey.currentState!.validate()) {
@@ -239,28 +269,114 @@ class _SignupscreenState extends State<Signupscreen> {
                     Icons.email_outlined,
                   ),
 
-                  _input(
-                    stateController,
-                    "State",
-                    Icons.location_city_outlined,
-                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: DropdownButtonFormField2<Map<String, dynamic>>(
+                      value: selectedState,
+                      isExpanded: true,
 
+                      decoration: InputDecoration(
+                        hintText: "Select State",
+                        hintStyle: const TextStyle(color: Colors.grey),
+                        prefixIcon: const Icon(
+                          Icons.location_city_outlined,
+                          color: Colors.blueAccent,
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFF121A2F),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+
+                      dropdownStyleData: DropdownStyleData(
+                        maxHeight: 250,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF121A2F),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+
+                      menuItemStyleData: const MenuItemStyleData(
+                        height: 50,
+                      ),
+
+                      iconStyleData: const IconStyleData(
+                        icon: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
+
+                      items: states.map((state) {
+                        return DropdownMenuItem<Map<String, dynamic>>(
+                          value: state,
+                          child: Text(
+                            state["state_name"],
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+
+                      onChanged: (value) {
+                        setState(() {
+                          selectedState = value;
+
+                          stateController.text =
+                              value?["state_name"] ?? "";
+
+                          timeZoneController.text =
+                              value?["time_zone"] ?? "";
+                        });
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: TextFormField(
+                      controller: timeZoneController,
+                      readOnly: true,
+                      style: const TextStyle(color: Colors.white),
+
+                      decoration: InputDecoration(
+                        hintText: "Time Zone",
+                        hintStyle: const TextStyle(color: Colors.grey),
+
+                        prefixIcon: const Icon(
+                          Icons.access_time_outlined,
+                          color: Colors.blueAccent,
+                        ),
+
+                        filled: true,
+                        fillColor: const Color(0xFF121A2F),
+
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: Colors.white24,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                   _input(
                     phoneController,
                     "Phone",
                     Icons.phone_outlined,
                   ),
-
                   _input(
                     addressController,
                     "Address",
                     Icons.home_outlined,
-                  ),
-
-                  _input(
-                    timeZoneController,
-                    "Time Zone",
-                    Icons.access_time_outlined,
                   ),
 
                   if (selectedUserType == "installer") ...[

@@ -23,22 +23,54 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   String currentTemp = "0";
   String unit = "";
   int targetTemp = 52;
-  String selectedMode = "";
+  String selectedMode = "Comfort"; // Set a default to match design
   bool isUpdatingTemp = false;
-  String mode = "ECO"; // standard / eco / boost
+  String mode = "ECO";
   bool isLoading = false;
   bool isPowerOn = false;
   bool isCheckingDevices = true;
   List<DeviceDataModel> deviceData = [];
   bool isDeviceActive = false;
   String device_name = "";
-  bool minusPressed = false;
-  bool plusPressed = false;
   Timer? _deviceDataTimer;
-  @override
+  bool isMinusPressed = false;
+  bool isPlusPressed = false;
+  // Design Colors
+  final Color bgColorStart = const Color(0xFF0F1725);
+  final Color bgColorEnd = const Color(0xFF0A101A);
+  final Color cardColor = const Color(0xFF131F33);
+  final Color accentBlue = const Color(0xFF38B6FF);
+  final Color textGrey = const Color(0xFF8B9CB6);
+  String selectedButton = '';
+
+  Color get activeThemeColor {
+    if (selectedMode == "Eco") {
+      return const Color(0xFF1DD38D); // Neon Green
+    } else if (selectedMode == "Boost") {
+      return const Color(0xFFFF7A00); // Bright Orange
+    } else {
+      return const Color(0xFF38B6FF); // Comfort Blue
+    }
+  }
+
+  Color get activeSolidColor {
+    if (selectedMode == "Eco") return const Color(0xFF00E676); // Neon Green
+    if (selectedMode == "Boost") return const Color(0xFFFF6D00); // Deep Orange
+    return const Color(0xFF38B6FF); // Comfort Blue
+  }
+
+  // 2. Define the gradient colors for the dial and backgrounds
+  List<Color> get activeGradientColors {
+    if (selectedMode == "Eco") {
+      return [const Color(0xFF00E676), const Color(0xFF1DE9B6)]; // Green to Cyan
+    } else if (selectedMode == "Boost") {
+      return [const Color(0xFFFF6D00), const Color(0xFFFFD180)]; // Orange to Yellow/Orange
+    } else {
+      return [const Color(0xFF38B6FF), const Color(0xFF00B0FF)]; // Light Blue to Deep Blue
+    }
+  }
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     loadUserDeviceList();
     _deviceDataTimer = Timer.periodic(
@@ -56,6 +88,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       return null;
     }
   }
+
   @override
   void dispose() {
     _deviceDataTimer?.cancel();
@@ -76,27 +109,15 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           "Authorization": "Bearer $token",
         },
       );
-      print(response.body);
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-
         final List dataList = decoded['data']['data'];
-        int length = dataList.length;
-        print("list size$length");
         setState(() {
-          deviceData = dataList
-              .map((e) => DeviceDataModel.fromJson(e))
-              .toList();
-          final setPointData = deviceData.firstWhere(
-            (item) => item.alias == "Setpoint DHW",
-          );
-          final setPointDataMode = deviceData.firstWhere(
-            (item) => item.alias == "mode",
-          );
-          final setPointDataPower = deviceData.firstWhere(
-            (item) => item.alias == "on/off",
-          );
-          print(" data points${setPointData.val}${setPointData.unit}");
+          deviceData = dataList.map((e) => DeviceDataModel.fromJson(e)).toList();
+          final setPointData = deviceData.firstWhere((item) => item.alias == "Setpoint DHW");
+          final setPointDataMode = deviceData.firstWhere((item) => item.alias == "mode");
+          final setPointDataPower = deviceData.firstWhere((item) => item.alias == "on/off");
+
           if (setPointDataMode.val == "0") {
             selectedMode = "Eco";
           } else if (setPointDataMode.val == "1") {
@@ -104,7 +125,6 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           } else if (setPointDataMode.val == "2") {
             selectedMode = "Boost";
           }
-          print(" mode points${setPointDataMode.val}   $selectedMode");
 
           currentTemp = setPointData.val;
           targetTemp = int.parse(setPointData.val);
@@ -113,79 +133,48 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           isLoading = false;
         });
       } else {
-        setState(() {
-          isLoading = false;
-        });
+        setState(() => isLoading = false);
       }
     } catch (e) {
-      print(e);
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
     }
   }
 
   Future<void> loadUserDeviceList() async {
     try {
       final response = await ApiService().get("listUserDevices");
-
       final data = response.data;
 
-      print("Response Data => $data");
-
-      /// 🔐 HANDLE UNAUTHENTICATED
       if (data["message"] == "Unauthenticated." || response.statusCode == 401) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => NewLoginScreen()),
-          (route) => false,
-        );
+        Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => NewLoginScreen()), (route) => false);
         return;
       }
       if (response.statusCode == 200) {
         List devices = data["devices"] ?? [];
-
-        /// NO DEVICE
         if (devices.isEmpty) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const ConnectScreen()),
-          );
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ConnectScreen()));
           return;
         }
 
-        /// FIRST DEVICE
         Map firstDevice = devices[0];
-
-        DeviceInformations.selectedDeviceId = firstDevice["device_id"]
-            .toString();
-        setState(() {
-          isDeviceActive = firstDevice["is_online"] == 1;
-          print("device status$isDeviceActive");
-        });
-
-        DeviceInformations.selectedSerialNumber = firstDevice["serial_number"]
-            .toString();
-
+        DeviceInformations.selectedDeviceId = firstDevice["device_id"].toString();
+        DeviceInformations.selectedSerialNumber = firstDevice["serial_number"].toString();
         DeviceInformations.selectedDeviceName = firstDevice["name"] ?? "";
-
         DeviceInformations.act_device_id = firstDevice["act_device_id"] ?? "";
 
-        print("Selected Device ID => ${DeviceInformations.selectedDeviceId}");
+        setState(() {
+          isDeviceActive = firstDevice["is_online"] == 1;
+          device_name = firstDevice["name"] ?? "";
+        });
 
         getDeviceData();
 
         setState(() {
-          device_name=firstDevice["name"] ?? "";
           isCheckingDevices = false;
         });
       }
     } catch (e) {
-      print("Catch Error => $e");
-
-      setState(() {
-        isCheckingDevices = false;
-      });
+      setState(() => isCheckingDevices = false);
     }
   }
 
@@ -193,16 +182,17 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     String device_id = DeviceInformations.act_device_id;
     final modeItem = getItem("mode");
     if (modeItem == null) return;
+
     String api_mode = "0";
+    if (mode == "Eco") api_mode = "0";
+    else if (mode == "Comfort") api_mode = "1";
+    else if (mode == "Boost") api_mode = "2";
+
     final prefs = await SharedPreferences.getInstance();
     String token = prefs.getString("token") ?? "";
-    if (mode == "ECO") {
-      api_mode = "0";
-    } else if (mode == "Comfort") {
-      api_mode = "1";
-    } else if (mode == "Boost") {
-      api_mode = "2";
-    }
+
+    setState(() => selectedMode = mode); // Optimistic UI update
+
     final response = await http.put(
       Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
       headers: {
@@ -218,44 +208,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     );
 
     if (response.statusCode == 200) {
-      setState(() {
-        selectedMode = mode;
-      });
       getDeviceData();
-    } else {
-      setState(() {
-        selectedMode = mode;
-      });
-    }
-  }
-
-  Future<void> togglePower(bool value) async {
-    String device_id = DeviceInformations.act_device_id;
-
-    final powerItem = getItem("on/off");
-    if (powerItem == null) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    String token = prefs.getString("token") ?? "";
-    int power = value ? 1 : 0;
-    final response = await http.put(
-      Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      },
-      body: jsonEncode({"devid": device_id, "itemid": "1", "value": "$power"}),
-    );
-
-    if (response.statusCode == 200) {
-      setState(() {
-        isPowerOn = value;
-      });
-      print("power status${response.body}");
-      getDeviceData(); // refresh
-    } else {
-      print(response.body);
     }
   }
 
@@ -265,15 +218,13 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
     setState(() {
       isUpdatingTemp = true;
+      targetTemp = value; // Optimistic UI update
     });
 
     try {
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
-
-      final tempItem = deviceData.firstWhere(
-        (item) => item.alias == "Setpoint DHW",
-      );
+      final tempItem = deviceData.firstWhere((item) => item.alias == "Setpoint DHW");
 
       final response = await http.put(
         Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
@@ -289,30 +240,13 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         }),
       );
 
-      print(response.body);
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
         if (data["data"] != null && data["data"]["status"] == "106") {
           final apiMsg = data['data']?['msg'] ?? "Something went wrong";
-
-          // check device status code
-          if (data['data']?['status'] == "106") {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(apiMsg), backgroundColor: Colors.red),
-            );
-            return;
-          }
-          return;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiMsg), backgroundColor: Colors.red));
         }
-        setState(() {
-          targetTemp = value;
-        });
-
-        /// keep loader visible for 10 seconds
-        await Future.delayed(const Duration(seconds: 10));
-
+        await Future.delayed(const Duration(seconds: 2));
         await getDeviceData();
       }
     } catch (e) {
@@ -327,16 +261,17 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   @override
   Widget build(BuildContext context) {
     if (isCheckingDevices) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF0A1A2F),
-        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      return Scaffold(
+        backgroundColor: bgColorStart,
+        body: const Center(child: CircularProgressIndicator(color: Color(0xFF38B6FF))),
       );
     }
     return Scaffold(
+      backgroundColor: bgColorStart,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF0A1A2F), Color(0xFF0F2A4A)],
+            colors: [bgColorStart, bgColorEnd],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -344,691 +279,392 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height,
-              ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      /// Logo
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          image: DecorationImage(
-                            image: AssetImage("assets/aether_4.png"),
-                            fit: BoxFit.cover,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 12),
+
+                /// 🟢 HEADER
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.rectangle,
+                            borderRadius: BorderRadius.circular(8),
+                            color: cardColor,
                           ),
+                          child: const Icon(Icons.person, color: Colors.white70, size: 20),
                         ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "AETHER SMART",
+                              style: TextStyle(color: textGrey, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.2),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              device_name.isEmpty ? "Alex's Home" : device_name,
+                              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.05)),
                       ),
-                      const SizedBox(width: 12),
-                      /// Text Column (Top + Bottom)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          /// Top Text
-                          const Text(
-                            "Device Name",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isDeviceActive ? const Color(0xFF00E676) : Colors.red,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: isDeviceActive ? const Color(0xFF00E676).withOpacity(0.5) : Colors.red.withOpacity(0.5),
+                                    blurRadius: 4,
+                                    spreadRadius: 1,
+                                  )
+                                ]
                             ),
                           ),
-
-                          const SizedBox(height: 2),
-                          /// Bottom Text
+                          const SizedBox(width: 6),
                           Text(
-                            device_name,
+                            isDeviceActive ? "ONLINE" : "OFFLINE",
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 30),
+
+                /// 🔵 CIRCULAR DIAL
+                ThermostatDial(
+                  temperature: currentTemp,
+                  solidColor: activeSolidColor,
+                  gradientColors: activeGradientColors,
+                ),
+                const SizedBox(height: 20),
+
+                /// ➖ ➕ TARGET CONTROLS
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+
+                    /// Minus Button
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          selectedButton = 'minus';
+                        });
+
+                        if (targetTemp > 35) {
+                          updateTemperature(targetTemp - 1);
+                        }
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: selectedButton == 'minus'
+                              ? accentBlue
+                              : cardColor,
+                          border: Border.all(
+                            color: selectedButton == 'minus'
+                                ? accentBlue
+                                : Colors.white.withOpacity(0.05),
+                          ),
+                          boxShadow: selectedButton == 'minus'
+                              ? [
+                            BoxShadow(
+                              color: accentBlue.withOpacity(0.6),
+                              blurRadius: 15,
+                              spreadRadius: 2,
+                            ),
+                          ]
+                              : [],
+                        ),
+                        child: Icon(
+                          Icons.remove,
+                          color: selectedButton == 'minus'
+                              ? Colors.white
+                              : accentBlue,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 15),
+
+                    /// Target Pill
+                    Container(
+                      width: 120,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.05),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "TARGET",
+                            style: TextStyle(
+                              color: textGrey,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          isUpdatingTemp
+                              ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                              : Text(
+                            "$targetTemp°C",
                             style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
 
-                  /// 🔌 POWER SWITCH
-                  SizedBox(height: 20),
+                    const SizedBox(width: 15),
 
-                  Row(
-                    children: [
-                      /// POWER CARD
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 18,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(22),
-                            color: Colors.white.withOpacity(0.06),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.08),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              /// Left Content
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
-                                  Text(
-                                    "Power",
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                ],
-                              ),
+                    /// Plus Button
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          selectedButton = 'plus';
+                        });
 
-                              /// Toggle
-                              GestureDetector(
-                                onTap: () {
-                                  togglePower(!isPowerOn);
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 300),
-                                  width: 45,
-                                  height: 22,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(30),
-                                    gradient: isPowerOn
-                                        ? const LinearGradient(
-                                            colors: [
-                                              Color(0xFF00C853),
-                                              Color(0xFF64DD17),
-                                            ],
-                                          )
-                                        : LinearGradient(
-                                            colors: [
-                                              Colors.grey.shade700,
-                                              Colors.grey.shade800,
-                                            ],
-                                          ),
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      AnimatedPositioned(
-                                        duration: const Duration(
-                                          milliseconds: 300,
-                                        ),
-                                        left: isPowerOn ? 20 : 4,
-                                        top: 3,
-                                        child: Container(
-                                          width: 15,
-                                          height: 15,
-                                          decoration: const BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: Colors.white,
-                                          ),
-                                          child: Icon(
-                                            Icons.power_settings_new,
-                                            size: 14,
-                                            color: isPowerOn
-                                                ? Colors.green
-                                                : Colors.grey,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 14),
-
-                      /// STATUS CARD
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 18,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(22),
-                            color: Colors.white.withOpacity(0.06),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.08),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              /// Left Title
-                              const Text(
-                                "Status",
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-
-                              /// Right Status
-                              Row(
-                                children: [
-                                  /// Dot
-                                  Container(
-                                    width: 12,
-                                    height: 12,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: isDeviceActive
-                                          ? const Color(0xFF00E676)
-                                          : const Color(0xFFFF5252),
-
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: isDeviceActive
-                                              ? const Color(
-                                                  0xFF00E676,
-                                                ).withOpacity(0.7)
-                                              : const Color(
-                                                  0xFFFF5252,
-                                                ).withOpacity(0.7),
-                                          blurRadius: 8,
-                                          spreadRadius: 1,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  const SizedBox(width: 8),
-
-                                  /// Status Text
-                                  Text(
-                                    isDeviceActive ? "Active" : "Offline",
-                                    style: TextStyle(
-                                      color: isDeviceActive
-                                          ? const Color(0xFF00E676)
-                                          : const Color(0xFFFF5252),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  /// 🔵 BIG GLOWING CIRCLE
-                   ThermostatDial(
-                    temperature: currentTemp,
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  /// ➖ ➕ BUTTONS
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-
-                      /// Minus Button
-                    _circleBtn(
-                    Icons.remove,
-                        () {
-                      if (targetTemp >= 36) {
-                        updateTemperature(targetTemp - 1);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Minimum temperature is 35"),
-                          ),
-                        );
-                      }
-                    },
-                    minusPressed,
-                        () => setState(() => minusPressed = true),
-                        () => setState(() => minusPressed = false),
-                  ),
-
-                      const SizedBox(width: 20),
-
-                      /// Target Container
-                      Container(
-                        width: 140,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 12,
-                        ),
+                        if (targetTemp < 75) {
+                          updateTemperature(targetTemp + 1);
+                        }
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        width: 46,
+                        height: 46,
                         decoration: BoxDecoration(
-                          color: const Color(0xff0F2342),
-                          borderRadius: BorderRadius.circular(20),
+                          shape: BoxShape.circle,
+                          color: selectedButton == 'plus'
+                              ? accentBlue
+                              : cardColor,
                           border: Border.all(
-                            color: Colors.white.withOpacity(.08),
+                            color: selectedButton == 'plus'
+                                ? accentBlue
+                                : Colors.white.withOpacity(0.05),
                           ),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              "SET TARGET",
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 10,
-                                letterSpacing: 2,
-                              ),
+                          boxShadow: selectedButton == 'plus'
+                              ? [
+                            BoxShadow(
+                              color: accentBlue.withOpacity(0.6),
+                              blurRadius: 15,
+                              spreadRadius: 2,
                             ),
-
-                            const SizedBox(height: 4),
-
-                            isUpdatingTemp
-                                ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                                : Text(
-                              "$targetTemp°C",
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                          ]
+                              : [],
+                        ),
+                        child: Icon(
+                          Icons.add,
+                          color: selectedButton == 'plus'
+                              ? Colors.white
+                              : accentBlue,
+                          size: 24,
                         ),
                       ),
-
-                      const SizedBox(width: 20),
-
-                      /// Plus Button
-                      _circleBtn(
-                        Icons.add,
-                            () {
-                          if (targetTemp <= 74) {
-                            updateTemperature(targetTemp + 1);
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Maximum temperature is 75"),
-                              ),
-                            );
-                          }
-                        },
-                        plusPressed,
-                            () => setState(() => plusPressed = true),
-                            () => setState(() => plusPressed = false),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  /// 🔘 MODE BUTTONS
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _modeCard("Eco", () => updateMode("Eco")),
-                      SizedBox(width: 10),
-                      _modeCard("Comfort", () => updateMode("Comfort")),
-                      SizedBox(width: 10),
-                      _modeCard("Boost", () => updateMode("Boost")),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-
-                  /// INFO CARDS
-                  // _infoCard("Defrost cycle", "Tap to start manual defrost"),
-                  // _infoCard("Next Schedule", "Morning shower - Tomorrow 05:30"),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-  Widget targetTemperatureControl() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 12,
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xff0B1D3A),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: Colors.white.withOpacity(.08),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.3),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            "SET TARGET",
-            style: TextStyle(
-              color: Colors.white54,
-              fontSize: 10,
-              letterSpacing: 2,
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _tempButton(
-                icon: Icons.remove,
-                onTap: () {
-                  if (targetTemp >= 36) {
-                    updateTemperature(targetTemp - 1);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Minimum temperature is 35°C",
-                        ),
-                      ),
-                    );
-                  }
-                },
-              ),
-
-              const SizedBox(width: 20),
-
-              isUpdatingTemp
-                  ? const SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Color(0xff53D6FF),
+                    ),
+                  ],
                 ),
-              )
-                  : Text(
-                "$targetTemp°C",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
+
+                const SizedBox(height: 30),
+
+                /// 🔘 MODE BUTTONS
+                Row(
+                  children: [
+                    _buildModeCard("Eco", "Save energy", Icons.energy_savings_leaf_outlined, selectedMode == "Eco"),
+                    const SizedBox(width: 10),
+                    _buildModeCard("Comfort", "Everyday balance", Icons.shield_outlined, selectedMode == "Comfort"),
+                    const SizedBox(width: 10),
+                    _buildModeCard("Boost", "Fast heat", Icons.local_fire_department_outlined, selectedMode == "Boost"),
+                  ],
                 ),
-              ),
 
-              const SizedBox(width: 20),
+                const SizedBox(height: 20),
 
-              _tempButton(
-                icon: Icons.add,
-                onTap: () {
-                  if (targetTemp <= 74) {
-                    updateTemperature(targetTemp + 1);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Maximum temperature is 75°C",
-                        ),
-                      ),
-                    );
-                  }
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _tempButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(50),
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xff11284A),
-          border: Border.all(
-            color: Colors.white.withOpacity(.08),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xff53D6FF).withOpacity(.15),
-              blurRadius: 10,
+                /// 📋 LIST TILES
+                _buildListTile(
+                    icon: Icons.ac_unit,
+                    title: "Defrost cycle",
+                    subtitle: "Tap to start a manual defrost",
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                      child: const Text("OFF", style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                    )
+                ),
+                _buildListTile(
+                  icon: Icons.cloud_outlined,
+                  title: "OUTSIDE - SYDNEY",
+                  subtitle: "12°C • Clear • drops to 8° tonight",
+                  trailing: const Icon(Icons.diamond_outlined, color: Colors.amber, size: 20),
+                ),
+                _buildListTile(
+                  icon: Icons.calendar_today_outlined,
+                  title: "NEXT SCHEDULE",
+                  subtitle: "Daytime eco • Today • 09:00",
+                  trailing: Icon(Icons.chevron_right, color: textGrey),
+                ),
+                _buildListTile(
+                  icon: Icons.notifications_none,
+                  title: "1 ACTIVE ALERT",
+                  subtitle: "Annual service due in 14 days",
+                  trailing: Icon(Icons.chevron_right, color: Colors.orangeAccent),
+                  outlineColor: Colors.orangeAccent,
+                ),
+                const SizedBox(height: 20),
+              ],
             ),
-          ],
-        ),
-        child: Icon(
-          icon,
-          color: Colors.white,
-          size: 20,
+          ),
         ),
       ),
+
+      /// 📱 BOTTOM NAVIGATION BAR
+      // bottomNavigationBar: Theme(
+      //   data: ThemeData(
+      //     splashColor: Colors.transparent,
+      //     highlightColor: Colors.transparent,
+      //   ),
+      //   child: BottomNavigationBar(
+      //     backgroundColor: bgColorEnd,
+      //     type: BottomNavigationBarType.fixed,
+      //     selectedItemColor: accentBlue,
+      //     unselectedItemColor: textGrey,
+      //     showSelectedLabels: true,
+      //     showUnselectedLabels: true,
+      //     selectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+      //     unselectedLabelStyle: const TextStyle(fontSize: 10),
+      //     elevation: 0,
+      //     items: const [
+      //       BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.home_filled)), label: "Home"),
+      //       BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.timer_outlined)), label: "Timer"),
+      //       BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.notifications_outlined)), label: "Alerts"),
+      //       BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.person_outline)), label: "Profile"),
+      //     ],
+      //   ),
+      // ),
     );
   }
-  /// 🔵 Round Button
-  Widget _circleBtn(
-      IconData icon,
-      VoidCallback onTap,
-      bool isPressed,
-      VoidCallback onPressDown,
-      VoidCallback onPressUp,
-      ) {
-    return GestureDetector(
-      onTapDown: (_) => onPressDown(),
-      onTapUp: (_) {
-        onPressUp();
-        onTap();
-      },
-      onTapCancel: onPressUp,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isPressed
-              ? const Color(0xff53D6FF)
-              : const Color(0xff0A1A33),
-          border: Border.all(
-            color: isPressed
-                ? Colors.white
-                : Colors.white.withOpacity(.08),
-          ),
-          boxShadow: isPressed
-              ? [
-            BoxShadow(
-              color: const Color(0xff53D6FF).withOpacity(.5),
-              blurRadius: 15,
-              spreadRadius: 2,
-            )
-          ]
-              : [],
-        ),
-        child: Icon(
-          icon,
-          color: isPressed ? Colors.black : Colors.white,
-          size: 26,
-        ),
-      ),
-    );
-  }
-  /// 🔘 Mode Card
-  Widget _modeCard(String text, VoidCallback onTap) {
-    final isSelected = selectedMode == text;
 
-    String getIcon() {
-      if (text == "Eco") return "assets/comfort.png";
-      if (text == "Boost") return "assets/comfort.png";
-      return "assets/comfort.png";
-    }
-
-    String getImage() {
-      if (text == "Eco") return "assets/eco_mode.png";
-      if (text == "Boost") return "assets/boost_mode.png";
-      return "assets/comfort.png";
-    }
-
-    LinearGradient getGradient() {
-      if (text == "Eco") {
-        return const LinearGradient(
-          colors: [
-            Color(0xFF1D6957),
-            Color(0x501E6E5B),
-            Color(0x502EB989),
-            Color(0x3036E2A3),
-            Color(0x707B889E),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      } else if (text == "Boost") {
-        return const LinearGradient(
-          colors: [
-            Color(0xFF6A3C2A),
-            Color(0x707B889E),
-            Color(0x60EEEEED),
-            Color(0x50F17637),
-            Color(0x35FA7938),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      } else {
-        return const LinearGradient(
-          colors: [
-            Color(0xFF1E2A3E),
-            Color(0xFF215D82),
-            Color(0x505CD2FF),
-            Color(0x607B889E),
-            Color(0x20FFFFFF),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      }
-    }
-
-    Color getTextColor() {
-      if (!isSelected) {
-        return const Color(0x99FFFFFF); // unselected common color
-      }
-
-      if (text == "Eco") {
-        return const Color(0xFF2EB989); // light green tint
-      } else if (text == "Boost") {
-        return const Color(0xFFF17637); // light orange tint
-      } else {
-        return const Color(0xFFFFFFFF); // light blue tint (Comfort)
-      }
-    }
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        width: 100,
-        height: 100,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-
-          // Selected gradient per mode
-          gradient: isSelected ? getGradient() : null,
-
-          // Default background
-          color: isSelected ? null : Colors.white.withOpacity(0.08),
-
-          border: Border.all(
-            color: isSelected
-                ? Colors.white.withOpacity(0.35)
-                : Colors.white.withOpacity(0.1),
-          ),
-
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.25),
-                    blurRadius: 10,
-                    spreadRadius: 1,
-                  ),
-                ]
-              : [],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Icon or Image switch
-            isSelected
-                ? Image.asset(getImage(), width: 30, height: 30)
-                : Image.asset(getIcon(), width: 30, height: 30),
-
-            const SizedBox(height: 10),
-
-            Text(
-              text,
-              style: TextStyle(
-                color: getTextColor(),
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              ),
+  Widget _buildModeCard(String title, String subtitle, IconData icon, bool isSelected) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => updateMode(title),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            // Apply the gradient to the background if selected
+            gradient: isSelected ? LinearGradient(
+              colors: activeGradientColors.map((c) => c.withOpacity(0.15)).toList(),
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ) : null,
+            color: isSelected ? null : cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? activeSolidColor : Colors.white.withOpacity(0.03),
+              width: 1.5,
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 📦 Info Card
-  Widget _infoCard(String title, String subtitle) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        color: Colors.white.withOpacity(0.08),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.ac_unit, color: Colors.white),
-          const SizedBox(width: 15),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            boxShadow: isSelected ? [
+              BoxShadow(color: activeSolidColor.withOpacity(0.2), blurRadius: 15, spreadRadius: 1)
+            ] : [],
+          ),
+          child: Column(
             children: [
+              Icon(icon, color: isSelected ? activeSolidColor : textGrey, size: 24),
+              const SizedBox(height: 10),
               Text(
                 title,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                style: TextStyle(color: textGrey, fontSize: 9),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+  /// Helper to build the List Tiles
+  Widget _buildListTile({required IconData icon, required String title, required String subtitle, Widget? trailing, Color? outlineColor}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: outlineColor?.withOpacity(0.4) ?? Colors.white.withOpacity(0.03),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: outlineColor ?? accentBlue, size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title.toUpperCase(),
+                  style: TextStyle(color: outlineColor ?? textGrey, fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.5),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+          if (trailing != null) trailing
         ],
       ),
     );

@@ -35,7 +35,32 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
   List<DeviceDataModel> deviceData = [];
   bool isDeviceActive = false;
   String device_name = "";
+  Color get activeThemeColor {
+    if (selectedMode == "Eco") {
+      return const Color(0xFF1DD38D); // Neon Green
+    } else if (selectedMode == "Boost") {
+      return const Color(0xFFFF7A00); // Bright Orange
+    } else {
+      return const Color(0xFF38B6FF); // Comfort Blue
+    }
+  }
 
+  Color get activeSolidColor {
+    if (selectedMode == "Eco") return const Color(0xFF00E676); // Neon Green
+    if (selectedMode == "Boost") return const Color(0xFFFF6D00); // Deep Orange
+    return const Color(0xFF38B6FF); // Comfort Blue
+  }
+
+  // 2. Define the gradient colors for the dial and backgrounds
+  List<Color> get activeGradientColors {
+    if (selectedMode == "Eco") {
+      return [const Color(0xFF00E676), const Color(0xFF1DE9B6)]; // Green to Cyan
+    } else if (selectedMode == "Boost") {
+      return [const Color(0xFFFF6D00), const Color(0xFFFFD180)]; // Orange to Yellow/Orange
+    } else {
+      return [const Color(0xFF38B6FF), const Color(0xFF00B0FF)]; // Light Blue to Deep Blue
+    }
+  }
   @override
   @override
   void initState() {
@@ -535,6 +560,8 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
                   /// 🔵 BIG GLOWING CIRCLE
                   ThermostatDial(
                     temperature: currentTemp,
+                    solidColor: activeSolidColor,
+                    gradientColors: activeGradientColors,
                   ),
 
                   const SizedBox(height: 30),

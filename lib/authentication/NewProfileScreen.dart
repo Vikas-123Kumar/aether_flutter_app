@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:untitled/DeviceInformations.dart';
+import 'package:untitled/assist/AssistScreen.dart';
 import 'package:untitled/authentication/NewLoginScreen.dart';
 import 'package:untitled/authentication/rest/APIService.dart';
 import 'dart:convert';
@@ -154,9 +155,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       String token = prefs.getString("token") ?? "";
 
       final response = await http.delete(
-        Uri.parse(
-          "https://aetherone.com.au/api/v1/deleteUserFromDevice",
-        ),
+        Uri.parse("https://aetherone.com.au/api/v1/deleteUserFromDevice"),
         headers: {
           "Accept": "application/json",
           "Content-Type": "application/json",
@@ -240,7 +239,12 @@ class _ProfileScreenState extends State<NewProfileScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => AssistScreen()),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF162544),
                 foregroundColor: const Color(0xFF00B4D8),
@@ -696,8 +700,9 @@ class _ProfileScreenState extends State<NewProfileScreen> {
 
                           scaffoldMessenger.showSnackBar(
                             SnackBar(
-                              backgroundColor:
-                              result["success"] ? Colors.green : Colors.red,
+                              backgroundColor: result["success"]
+                                  ? Colors.green
+                                  : Colors.red,
                               content: Text(result["message"]),
                             ),
                           );
