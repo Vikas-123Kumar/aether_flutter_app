@@ -268,25 +268,74 @@ class _SignupscreenState extends State<Signupscreen> {
                     "Email",
                     Icons.email_outlined,
                   ),
-
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                  _input(
+                    phoneController,
+                    "Phone",
+                    Icons.phone_outlined,
+                  ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: DropdownButtonHideUnderline(
                     child: DropdownButtonFormField2<Map<String, dynamic>>(
-                      value: selectedState,
                       isExpanded: true,
+                      value: selectedState,
 
                       decoration: InputDecoration(
-                        hintText: "Select State",
-                        hintStyle: const TextStyle(color: Colors.grey),
-                        prefixIcon: const Icon(
-                          Icons.location_city_outlined,
-                          color: Colors.blueAccent,
-                        ),
                         filled: true,
                         fillColor: const Color(0xFF121A2F),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 1,
+                          vertical: 14,
+                        ),
+
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide.none,
+                        ),
+
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: Colors.white.withOpacity(0.08),
+                          ),
+                        ),
+
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: Colors.blueAccent,
+                            width: 1.2,
+                          ),
+                        ),
+                      ),
+
+                      hint: Row(
+                        children: const [
+                          Icon(
+                            Icons.location_city_outlined,
+                            color: Colors.blueAccent,
+                            size: 20,
+                          ),
+                          SizedBox(width: 15),
+                          Text(
+                            "Select State",
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      buttonStyleData: const ButtonStyleData(
+                        height: 32,
+                        padding: EdgeInsets.zero,
+                      ),
+
+                      iconStyleData: const IconStyleData(
+                        icon: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Colors.white,
                         ),
                       ),
 
@@ -302,25 +351,51 @@ class _SignupscreenState extends State<Signupscreen> {
                         height: 50,
                       ),
 
-                      iconStyleData: const IconStyleData(
-                        icon: Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: Colors.white,
-                        ),
-                      ),
-
                       items: states.map((state) {
                         return DropdownMenuItem<Map<String, dynamic>>(
                           value: state,
-                          child: Text(
-                            state["state_name"],
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                            ),
+                          child: Row(
+                            children: [
+
+                              Expanded(
+                                child: Text(
+                                  state["state_name"],
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         );
                       }).toList(),
+
+                      selectedItemBuilder: (context) {
+                        return states.map<Widget>((state) {
+                          return Row(
+                            children: [
+                              const Icon(
+                                Icons.location_city_outlined,
+                                color: Colors.blueAccent,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 15),
+                              Expanded(
+                                child: Text(
+                                  state["state_name"],
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList();
+                      },
 
                       onChanged: (value) {
                         setState(() {
@@ -335,6 +410,7 @@ class _SignupscreenState extends State<Signupscreen> {
                       },
                     ),
                   ),
+                ),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: TextFormField(
@@ -349,6 +425,7 @@ class _SignupscreenState extends State<Signupscreen> {
                         prefixIcon: const Icon(
                           Icons.access_time_outlined,
                           color: Colors.blueAccent,
+                          size: 22,
                         ),
 
                         filled: true,
@@ -368,11 +445,7 @@ class _SignupscreenState extends State<Signupscreen> {
                       ),
                     ),
                   ),
-                  _input(
-                    phoneController,
-                    "Phone",
-                    Icons.phone_outlined,
-                  ),
+
                   _input(
                     addressController,
                     "Address",
@@ -430,7 +503,7 @@ class _SignupscreenState extends State<Signupscreen> {
                     ),
                     child: isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text("Create account"),
+                        : const Text("Create account",style: TextStyle(color: Colors.white)),
                   ),
 
                   const SizedBox(height: 20),

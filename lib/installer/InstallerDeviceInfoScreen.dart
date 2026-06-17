@@ -37,28 +37,37 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
   String device_name = "";
   Color get activeThemeColor {
     if (selectedMode == "Eco") {
-      return const Color(0xFF1DD38D); // Neon Green
+      return const Color(0xFF1E6E5B); // Neon Green
     } else if (selectedMode == "Boost") {
-      return const Color(0xFFFF7A00); // Bright Orange
+      return const Color(0xFF6A3C2A); // Bright Orange
     } else {
       return const Color(0xFF38B6FF); // Comfort Blue
     }
   }
+  final Color bgColorStart = const Color(0xFF0F1725);
+  final Color bgColorEnd = const Color(0xFF0A101A);
+  final Color cardColor = const Color(0xFF131F33);
+  final Color accentBlue = const Color(0xFF38B6FF);
+  final Color textGrey = const Color(0xFF8B9CB6);
 
   Color get activeSolidColor {
-    if (selectedMode == "Eco") return const Color(0xFF00E676); // Neon Green
-    if (selectedMode == "Boost") return const Color(0xFFFF6D00); // Deep Orange
-    return const Color(0xFF38B6FF); // Comfort Blue
+    if (selectedMode == "Eco") return const Color(0xFF1E6E5B); // Neon Green
+    if (selectedMode == "Boost") return const Color(0xFFF17637); // Deep Orange
+    return const Color(0xFF215D82); // Comfort Blue
   }
 
   // 2. Define the gradient colors for the dial and backgrounds
+  // 2. Define the gradient colors for the dial and backgrounds
   List<Color> get activeGradientColors {
     if (selectedMode == "Eco") {
-      return [const Color(0xFF00E676), const Color(0xFF1DE9B6)]; // Green to Cyan
+      // Vivid Green fading into Bright Cyan/Teal
+      return [const Color(0xFF36E2A3), const Color(0xFF377E99)];
     } else if (selectedMode == "Boost") {
-      return [const Color(0xFFFF6D00), const Color(0xFFFFD180)]; // Orange to Yellow/Orange
+      // Deep Orange fading into Bright Yellow
+      return [const Color(0xFFD4926C), const Color(0xFF377E99)];
     } else {
-      return [const Color(0xFF38B6FF), const Color(0xFF00B0FF)]; // Light Blue to Deep Blue
+      // Rich Blue fading into Light Neon Blue
+      return [const Color(0xFF5CD2FF), const Color(0x505CD2FF)];
     }
   }
   @override
@@ -619,13 +628,12 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
 
                   /// 🔘 MODE BUTTONS
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _modeCard("Eco", () => updateMode("Eco")),
-                      SizedBox(width: 10),
-                      _modeCard("Comfort", () => updateMode("Comfort")),
-                      SizedBox(width: 10),
-                      _modeCard("Boost", () => updateMode("Boost")),
+                      _buildModeCard("Eco", "Save energy", Icons.energy_savings_leaf_outlined, selectedMode == "Eco"),
+                      const SizedBox(width: 10),
+                      _buildModeCard("Comfort", "Everyday balance", Icons.shield_outlined, selectedMode == "Comfort"),
+                      const SizedBox(width: 10),
+                      _buildModeCard("Boost", "Fast heat", Icons.local_fire_department_outlined, selectedMode == "Boost"),
                     ],
                   ),
                   const SizedBox(height: 30),
@@ -643,124 +651,49 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
   }
 
   /// 🔘 Mode Card
-  Widget _modeCard(String text, VoidCallback onTap) {
-    final isSelected = selectedMode == text;
+  Widget _buildModeCard(String title, String subtitle, IconData icon, bool isSelected) {
+    return Expanded(
+      child: GestureDetector(
 
-    String getIcon() {
-      if (text == "Eco") return "assets/comfort.png";
-      if (text == "Boost") return "assets/comfort.png";
-      return "assets/comfort.png";
-    }
-
-    String getImage() {
-      if (text == "Eco") return "assets/eco_mode.png";
-      if (text == "Boost") return "assets/boost_mode.png";
-      return "assets/comfort.png";
-    }
-
-    LinearGradient getGradient() {
-      if (text == "Eco") {
-        return const LinearGradient(
-          colors: [
-            Color(0xFF1D6957),
-            Color(0x501E6E5B),
-            Color(0x502EB989),
-            Color(0x3036E2A3),
-            Color(0x707B889E),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      } else if (text == "Boost") {
-        return const LinearGradient(
-          colors: [
-            Color(0xFF6A3C2A),
-            Color(0x707B889E),
-            Color(0x60EEEEED),
-            Color(0x50F17637),
-            Color(0x35FA7938),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      } else {
-        return const LinearGradient(
-          colors: [
-            Color(0xFF1E2A3E),
-            Color(0xFF215D82),
-            Color(0x505CD2FF),
-            Color(0x607B889E),
-            Color(0x20FFFFFF),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      }
-    }
-
-    Color getTextColor() {
-      if (!isSelected) {
-        return const Color(0x99FFFFFF); // unselected common color
-      }
-
-      if (text == "Eco") {
-        return const Color(0xFF2EB989); // light green tint
-      } else if (text == "Boost") {
-        return const Color(0xFFF17637); // light orange tint
-      } else {
-        return const Color(0xFFFFFFFF); // light blue tint (Comfort)
-      }
-    }
-
-    return GestureDetector(
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        width: 100,
-        height: 100,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-
-          // Selected gradient per mode
-          gradient: isSelected ? getGradient() : null,
-
-          // Default background
-          color: isSelected ? null : Colors.white.withOpacity(0.08),
-
-          border: Border.all(
-            color: isSelected
-                ? Colors.white.withOpacity(0.35)
-                : Colors.white.withOpacity(0.1),
-          ),
-
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.25),
-                    blurRadius: 10,
-                    spreadRadius: 1,
-                  ),
-                ]
-              : [],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Icon or Image switch
-            isSelected
-                ? Image.asset(getImage(), width: 30, height: 30)
-                : Image.asset(getIcon(), width: 30, height: 30),
-
-            const SizedBox(height: 10),
-
-            Text(
-              text,
-              style: TextStyle(
-                color: getTextColor(),
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            // UPDATED: Stronger start color, fading out
+            gradient: isSelected ? LinearGradient(
+              colors: [
+                activeGradientColors.first.withOpacity(0.25), // Brighter top-left
+                activeGradientColors.last.withOpacity(0.05),  // Darker bottom-right
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ) : null,
+            color: isSelected ? null : cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? activeSolidColor : Colors.white.withOpacity(0.03),
+              width: 1.5,
             ),
-          ],
+            boxShadow: isSelected ? [
+              BoxShadow(color: activeSolidColor.withOpacity(0.2), blurRadius: 15, spreadRadius: 1)
+            ] : [],
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: isSelected ? activeSolidColor : textGrey, size: 24),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(color: textGrey, fontSize: 9),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );

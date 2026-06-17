@@ -45,28 +45,32 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
   Color get activeThemeColor {
     if (selectedMode == "Eco") {
-      return const Color(0xFF1DD38D); // Neon Green
+      return const Color(0xFF1E6E5B); // Neon Green
     } else if (selectedMode == "Boost") {
-      return const Color(0xFFFF7A00); // Bright Orange
+      return const Color(0xFF6A3C2A); // Bright Orange
     } else {
       return const Color(0xFF38B6FF); // Comfort Blue
     }
   }
 
   Color get activeSolidColor {
-    if (selectedMode == "Eco") return const Color(0xFF00E676); // Neon Green
-    if (selectedMode == "Boost") return const Color(0xFFFF6D00); // Deep Orange
-    return const Color(0xFF38B6FF); // Comfort Blue
+    if (selectedMode == "Eco") return const Color(0xFF1E6E5B); // Neon Green
+    if (selectedMode == "Boost") return const Color(0xFFF17637); // Deep Orange
+    return const Color(0xFF215D82); // Comfort Blue
   }
 
   // 2. Define the gradient colors for the dial and backgrounds
+  // 2. Define the gradient colors for the dial and backgrounds
   List<Color> get activeGradientColors {
     if (selectedMode == "Eco") {
-      return [const Color(0xFF00E676), const Color(0xFF1DE9B6)]; // Green to Cyan
+      // Vivid Green fading into Bright Cyan/Teal
+      return [const Color(0xFF36E2A3), const Color(0xFF377E99)];
     } else if (selectedMode == "Boost") {
-      return [const Color(0xFFFF6D00), const Color(0xFFFFD180)]; // Orange to Yellow/Orange
+      // Deep Orange fading into Bright Yellow
+      return [const Color(0xFFD4926C), const Color(0xFF377E99)];
     } else {
-      return [const Color(0xFF38B6FF), const Color(0xFF00B0FF)]; // Light Blue to Deep Blue
+      // Rich Blue fading into Light Neon Blue
+      return [const Color(0xFF5CD2FF), const Color(0x505CD2FF)];
     }
   }
   @override
@@ -298,7 +302,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                             borderRadius: BorderRadius.circular(8),
                             color: cardColor,
                           ),
-                          child: const Icon(Icons.person, color: Colors.white70, size: 20),
+                          child: const Icon(Icons.heat_pump, color: Colors.lightBlue, size: 20),
                         ),
                         const SizedBox(width: 12),
                         Column(
@@ -595,9 +599,12 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            // Apply the gradient to the background if selected
+            // UPDATED: Stronger start color, fading out
             gradient: isSelected ? LinearGradient(
-              colors: activeGradientColors.map((c) => c.withOpacity(0.15)).toList(),
+              colors: [
+                activeGradientColors.first.withOpacity(0.25), // Brighter top-left
+                activeGradientColors.last.withOpacity(0.05),  // Darker bottom-right
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ) : null,
