@@ -84,9 +84,8 @@ class _OtpScreenState extends State<OtpScreen> {
 
   Future<void> resendOtp() async {
     print("Resend OTP");
-
     try {
-      final response = await api.post("resendOTP", {"email": widget.email});
+      final response = await api.post("sendOtp", {"email": widget.email});
 
       final data = response.data;
 
@@ -100,18 +99,19 @@ class _OtpScreenState extends State<OtpScreen> {
         );
       } else {
         // ❌ ERROR
-        showSnack(context, data["message"], "fail");
+        if(data["message"]=="OTP sent successfully"){
+          showSnack(context, data["message"], "success");
+
+        }else{
+          showSnack(context, data["message"], "fail");
+
+        }
       }
     } catch (e) {
       print("Error: $e");
       showSnack(context, "Something went wrong", "fail");
     }
-
     startTimer();
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("OTP Resent")));
   }
 
   Widget otpBox(int index) {

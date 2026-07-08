@@ -59,6 +59,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
   Future<void> syncDevice(String deviceId) async {
     final prefs = await SharedPreferences.getInstance();
    int user_id = prefs.getInt("user_id") ??0;
+   print("user id"+user_id.toString());
     String currentRole = prefs.getString("current_role") ?? "";
     try {
       String apiEndpoint = currentRole == "Installer"

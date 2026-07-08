@@ -78,7 +78,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     super.initState();
     loadUserDeviceList();
     _deviceDataTimer = Timer.periodic(
-      const Duration(seconds: 30),
+      const Duration(seconds: 15),
           (timer) {
         getDeviceData();
       },
@@ -104,6 +104,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
       String deviceId = DeviceInformations.act_device_id;
+      print("token"+token+","+deviceId);
       final response = await http.get(
         Uri.parse(
           "https://aetherone.com.au/api/v1/heat-pump-2/devices/$deviceId/current-data",
@@ -117,10 +118,12 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         final decoded = jsonDecode(response.body);
         final List dataList = decoded['data']['data'];
         setState(() {
+          print(" get response"+dataList.length.toString());
+
           deviceData = dataList.map((e) => DeviceDataModel.fromJson(e)).toList();
-          final setPointData = deviceData.firstWhere((item) => item.alias == "Setpoint DHW");
-          final setPointDataMode = deviceData.firstWhere((item) => item.alias == "mode");
-          final setPointDataPower = deviceData.firstWhere((item) => item.alias == "on/off");
+          final setPointData = deviceData.firstWhere((item) => item.itemid == "3");
+          final setPointDataMode = deviceData.firstWhere((item) => item.itemid == "2");
+          final setPointDataPower = deviceData.firstWhere((item) => item.itemid == "1");
 
           if (setPointDataMode.val == "0") {
             selectedMode = "Eco";
@@ -129,7 +132,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           } else if (setPointDataMode.val == "2") {
             selectedMode = "Boost";
           }
-
+print("current temp"+currentTemp);
           currentTemp = setPointData.val;
           targetTemp = int.parse(setPointData.val);
           unit = setPointData.unit;
@@ -159,12 +162,13 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ConnectScreen()));
           return;
         }
-
+         print("installer list"+devices.length.toString());
         Map firstDevice = devices[0];
         DeviceInformations.selectedDeviceId = firstDevice["device_id"].toString();
         DeviceInformations.selectedSerialNumber = firstDevice["serial_number"].toString();
         DeviceInformations.selectedDeviceName = firstDevice["name"] ?? "";
         DeviceInformations.act_device_id = firstDevice["act_device_id"] ?? "";
+        if (!mounted) return;
 
         setState(() {
           isDeviceActive = firstDevice["is_online"] == 1;
@@ -172,13 +176,19 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         });
 
         getDeviceData();
+        if (!mounted) return;
 
         setState(() {
           isCheckingDevices = false;
         });
+
       }
     } catch (e) {
-      setState(() => isCheckingDevices = false);
+      if (!mounted) return;
+
+      setState(() {
+        isCheckingDevices = false;
+      });
     }
   }
 
@@ -206,11 +216,10 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       },
       body: jsonEncode({
         "devid": device_id,
-        "itemid": "",
-        "value": "mode=$api_mode",
+        "itemid": "2",
+        "value": api_mode,
       }),
     );
-
     if (response.statusCode == 200) {
       getDeviceData();
     }
@@ -228,7 +237,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
-      final tempItem = deviceData.firstWhere((item) => item.alias == "Setpoint DHW");
+      final tempItem = deviceData.firstWhere((item) => item.itemid == "3");
 
       final response = await http.put(
         Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),

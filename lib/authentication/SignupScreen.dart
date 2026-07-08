@@ -134,6 +134,8 @@ class _SignupscreenState extends State<Signupscreen> {
       if (selectedUserType == "installer") {
         body["licence_no"] = installerId;
         body["company_name"] = companyName;
+        body["address"] = address;
+        body["timezone"] = timeZone;
       }
 
       print("REQUEST JSON => $body");

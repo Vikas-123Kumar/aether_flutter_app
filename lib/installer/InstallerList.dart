@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:untitled/installer/InstallerDeviceInfoScreen.dart';
 import 'package:untitled/pairdevice/ConnectScreen.dart';
 
@@ -34,10 +35,14 @@ class _DashboardScreenState extends State<Installerlist> {
   int onlineDevices = 0;
   Future<void> loadUserDeviceList() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+
+      int user_id = prefs.getInt("user_id") ??0;
+
+      print("user id"+user_id.toString());
+
       final response = await ApiService().get("listUserDevices");
-
       final data = response.data;
-
       if (data["message"] == "Unauthenticated." || response.statusCode == 401) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -46,7 +51,6 @@ class _DashboardScreenState extends State<Installerlist> {
         );
         return;
       }
-
       if (response.statusCode == 200) {
         setState(() {
           devices = data["devices"] ?? [];
@@ -55,7 +59,6 @@ class _DashboardScreenState extends State<Installerlist> {
           onlineDevices = devices
               .where((d) => d["is_online"] == 1)
               .length;
-
         });
       }
     } catch (e) {

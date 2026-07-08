@@ -118,13 +118,13 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
               .map((e) => DeviceDataModel.fromJson(e))
               .toList();
           final setPointData = deviceData.firstWhere(
-            (item) => item.alias == "Setpoint DHW",
+            (item) => item.itemid == "3",
           );
           final setPointDataMode = deviceData.firstWhere(
-            (item) => item.alias == "mode",
+            (item) => item.itemid == "2",
           );
           final setPointDataPower = deviceData.firstWhere(
-            (item) => item.alias == "on/off",
+            (item) => item.itemid == "1",
           );
           print(" data points${setPointData.val}${setPointData.unit}");
           if (setPointDataMode.val == "0") {
