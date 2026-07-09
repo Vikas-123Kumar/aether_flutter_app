@@ -34,7 +34,6 @@ class _ConnectScreenState extends State<ConnectScreen> {
     // Encode to handle spaces like "OM NAMAH SHIVAYA"
     String url =
         "http://192.168.4.1/wifisave?s=${Uri.encodeComponent(ssid)}&p=${Uri.encodeComponent(password)}";
-
     try {
       setState(() {
         _isLoading = true;
@@ -52,7 +51,6 @@ class _ConnectScreenState extends State<ConnectScreen> {
       });
     }
     await Future.delayed(const Duration(seconds: 8));
-
     /// SYNC DEVICE TO SERVER
     await syncDevice(serialNumber);
   }

@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:untitled/DeviceInformations.dart';
 
+import '../InternetService.dart';
+
 class InviteDialog extends StatefulWidget {
   @override
   _InviteDialogState createState() => _InviteDialogState();
@@ -22,6 +24,15 @@ class _InviteDialogState extends State<InviteDialog> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Fill all fields")));
+      return;
+    }
+    bool connected = await InternetService().hasInternet();
+    if (!connected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No Internet Connection"),
+        ),
+      );
       return;
     }
     setState(() => isLoading = true);

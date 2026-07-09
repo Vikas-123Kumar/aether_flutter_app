@@ -7,9 +7,12 @@ import 'package:untitled/authentication/NewLoginScreen.dart';
 import 'package:untitled/authentication/rest/APIService.dart';
 import 'dart:convert';
 
+import '../InternetService.dart';
 import '../common_function/SnackBar.dart';
 import '../invite/InviteDialog.dart';
+import '../invite/SyncDevice.dart';
 import '../pairdevice/ConnectScreen.dart';
+import '../pairdevice/ConnectedScreen.dart';
 import 'model/FamilyMember.dart';
 
 class NewProfileScreen extends StatefulWidget {
@@ -22,14 +25,15 @@ class NewProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<NewProfileScreen> {
   bool _isLoading = false;
   Map<String, dynamic> _profileData = {};
-  String name = "Vikas";
-  String email = "vikas@gmail.com";
+  String name = "";
+  String email = "";
   String userId = "";
   String firstLetter = "";
-  String mobile = "9927010683";
+  String mobile = "";
   List<FamilyMember> familyMembers = [];
   bool isFamilyLoading = true;
   bool isLoading = false;
+  String deviceId = DeviceInformations.selectedDeviceId;
 
   @override
   void initState() {
@@ -79,6 +83,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       });
     }
   }
+
 
   Future<void> _fetchProfile() async {
     setState(() {
@@ -178,6 +183,14 @@ class _ProfileScreenState extends State<NewProfileScreen> {
   Future<void> logout() async {
     final api = ApiService();
     try {
+      bool connected = await InternetService().hasInternet();
+
+      if (!connected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No Internet Connection")),
+        );
+        return;
+      }
       final response = await api.post("logout", {});
       final data = response.data;
 
@@ -201,13 +214,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       }
     } catch (e) {
       print("Error: $e");
-
       showSnack(context, "Something went wrong", "fail");
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => NewLoginScreen()),
-      );
     }
   }
 
@@ -346,6 +353,54 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                             ),
                     ),
                   ),
+                  const SizedBox(height: 20),
+
+                  if (deviceId.isEmpty)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          bool connected = await InternetService().hasInternet();
+
+                          if (!connected) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("No Internet Connection")),
+                            );
+                            return;
+                          }
+
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) => Syncdevice(),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00B4D8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                            : const Text(
+                          "Sync Device",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                   //_buildInstallerAndSupport(),
                 ],
               ),
@@ -741,56 +796,6 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       child: Text(
         text,
         style: const TextStyle(color: Color(0xFF00B4D8), fontSize: 9),
-      ),
-    );
-  }
-
-  Widget _buildInstallerAndSupport() {
-    return const Padding(
-      padding: EdgeInsets.only(left: 8.0, bottom: 6.0),
-      child: Text(
-        "INSTALLER & SUPPORT",
-        style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 1),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF161F33),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _navItem(Icons.home_outlined, "Home", false),
-          _navItem(Icons.calendar_month_outlined, "Timer", false),
-          _navItem(Icons.notifications_outlined, "Alert", false),
-          _navItem(Icons.person_outline, "Profile", true),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, bool isSelected) {
-    return GestureDetector(
-      onTap: () {},
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: isSelected ? const Color(0xFF00B4D8) : Colors.grey),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? const Color(0xFF00B4D8) : Colors.grey,
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
       ),
     );
   }

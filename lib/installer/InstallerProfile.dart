@@ -6,6 +6,7 @@ import 'package:untitled/authentication/NewLoginScreen.dart';
 import 'package:untitled/authentication/rest/APIService.dart';
 import 'dart:convert';
 
+import '../InternetService.dart';
 import '../authentication/model/FamilyMember.dart';
 import '../common_function/SnackBar.dart';
 import '../invite/InviteDialog.dart';
@@ -103,16 +104,22 @@ class _ProfileScreenState extends State<Installerprofile> {
 
   Future<void> logout() async {
     final api = ApiService();
-
     try {
+      bool connected = await InternetService().hasInternet();
+      if (!connected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("No Internet Connection"),
+          ),
+        );
+        return;
+      }
       final response = await api.post("logout", {});
       final data = response.data;
 
       if (data["success"] == true) {
         showSnack(context, data["message"], "success");
-
         final prefs = await SharedPreferences.getInstance();
-
         // ✅ CLEAR TOKEN
         await prefs.remove("token");
         await prefs.clear(); // optional (clears all saved data)

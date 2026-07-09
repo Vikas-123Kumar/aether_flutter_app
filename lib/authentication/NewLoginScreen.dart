@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:untitled/authentication/SetPasswordScreen.dart';
 import 'package:untitled/authentication/rest/APIService.dart';
 
+import '../InternetService.dart';
 import '../common_function/SnackBar.dart';
 import '../device_details/HomeScreen.dart';
 import 'SignupScreen.dart';
@@ -32,6 +33,15 @@ class _LoginScreenState extends State<NewLoginScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
+      return;
+    }
+    bool connected = await InternetService().hasInternet();
+    if (!connected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No Internet Connection"),
+        ),
+      );
       return;
     }
     try {

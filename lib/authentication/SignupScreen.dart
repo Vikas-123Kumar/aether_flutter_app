@@ -8,6 +8,8 @@ import 'dart:convert';
 import 'package:untitled/authentication/OtpScreen.dart';
 import 'package:untitled/authentication/rest/APIService.dart';
 
+import '../InternetService.dart';
+
 class Signupscreen extends StatefulWidget {
   const Signupscreen({super.key});
 
@@ -82,7 +84,16 @@ class _SignupscreenState extends State<Signupscreen> {
 
     final String installerId = installerIdController.text.trim();
     final String companyName = companyNameController.text.trim();
+    bool connected = await InternetService().hasInternet();
 
+    if (!connected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No Internet Connection"),
+        ),
+      );
+      return;
+    }
     if (!acceptedTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please accept Terms and Privacy Policy")),

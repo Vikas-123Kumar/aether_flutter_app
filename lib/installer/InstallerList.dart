@@ -4,6 +4,7 @@ import 'package:untitled/installer/InstallerDeviceInfoScreen.dart';
 import 'package:untitled/pairdevice/ConnectScreen.dart';
 
 import '../DeviceInformations.dart';
+import '../InternetService.dart';
 import '../authentication/NewLoginScreen.dart';
 import '../authentication/model/Device.dart';
 import '../authentication/model/DeviceDataModel.dart';
@@ -35,12 +36,18 @@ class _DashboardScreenState extends State<Installerlist> {
   int onlineDevices = 0;
   Future<void> loadUserDeviceList() async {
     try {
+      bool connected = await InternetService().hasInternet();
+      if (!connected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("No Internet Connection"),
+          ),
+        );
+        return;
+      }
       final prefs = await SharedPreferences.getInstance();
-
       int user_id = prefs.getInt("user_id") ??0;
-
       print("user id"+user_id.toString());
-
       final response = await ApiService().get("listUserDevices");
       final data = response.data;
       if (data["message"] == "Unauthenticated." || response.statusCode == 401) {

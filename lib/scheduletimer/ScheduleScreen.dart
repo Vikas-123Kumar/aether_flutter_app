@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:untitled/DeviceInformations.dart';
 import 'package:untitled/scheduletimer/CreateScheduleScreen.dart';
 
+import '../InternetService.dart';
+
 class Schedule {
   final int id;
   final String day;
@@ -42,6 +44,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Future<void> fetchSchedules() async {
+    bool connected = await InternetService().hasInternet();
+    if (!connected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No Internet Connection"),
+        ),
+      );
+      return;
+    }
     try {
       String deviceId = DeviceInformations.selectedDeviceId;
       print("device id$deviceId");
@@ -102,6 +113,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Future<void> toggleSchedule(int index, bool value,int id) async {
+    bool connected = await InternetService().hasInternet();
+    if (!connected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No Internet Connection"),
+        ),
+      );
+      return;
+    }
     final schedule = schedules[index];
     try {
       final prefs = await SharedPreferences.getInstance();

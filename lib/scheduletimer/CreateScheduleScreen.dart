@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:untitled/DeviceInformations.dart';
 import 'dart:convert';
 
+import '../InternetService.dart';
 import '../authentication/model/ScheduleTime.dart';
 
 class CreateScheduleScreen extends StatefulWidget {
@@ -38,6 +39,16 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
         timezones: timezone,
         schedule: schedule,
       );
+
+      bool connected = await InternetService().hasInternet();
+      if (!connected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("No Internet Connection"),
+          ),
+        );
+        return;
+      }
       final prefs = await SharedPreferences.getInstance();
 
       String token = prefs.getString("token") ?? "";
