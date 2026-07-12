@@ -426,7 +426,6 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
                                   SizedBox(height: 4),
                                 ],
                               ),
-
                               /// Toggle
                               GestureDetector(
                                 // onTap: () {

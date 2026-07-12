@@ -124,7 +124,7 @@ class ThermostatPainter extends CustomPainter {
       center.dx + radius * cos(knobAngle),
       center.dy + radius * sin(knobAngle),
     );
-    canvas.drawCircle(knob, 12, Paint()..color = Colors.white);
+    canvas.drawCircle(knob, 2, Paint()..color = Colors.white);
   }
 
   @override

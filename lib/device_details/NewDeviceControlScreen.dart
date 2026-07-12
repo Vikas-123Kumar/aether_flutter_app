@@ -161,9 +161,9 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     try {
       bool connected = await InternetService().hasInternet();
       if (!connected) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No Internet Connection")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("No Internet Connection")));
       }
       final response = await ApiService().get("listUserDevices");
       final data = response.data;
@@ -247,6 +247,52 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     }
   }
 
+  Future<void> updatePower() async {
+    String deviceId = DeviceInformations.act_device_id;
+
+    final prefs = await SharedPreferences.getInstance();
+    String token = prefs.getString("token") ?? "";
+
+    // Current ON -> send 0
+    // Current OFF -> send 1
+    int apiMode = isPowerOn ? 0 : 1;
+
+    // Optimistic UI update
+    setState(() {
+      isPowerOn = !isPowerOn;
+    });
+
+    try {
+      final response = await http.put(
+        Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({
+          "devid": deviceId,
+          "itemid": "1",
+          "value": apiMode,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        getDeviceData(); // Refresh actual status from API
+      } else {
+        // Revert UI if API fails
+        setState(() {
+          isPowerOn = !isPowerOn;
+        });
+      }
+    } catch (e) {
+      // Revert UI on exception
+      setState(() {
+        isPowerOn = !isPowerOn;
+      });
+    }
+  }
+
   Future<void> updateTemperature(int value) async {
     if (isUpdatingTemp) return;
     String device_id = DeviceInformations.act_device_id;
@@ -324,16 +370,16 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                 const SizedBox(height: 12),
 
                 /// 🟢 HEADER
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
+              Row(
+                children: [
+                  // Left Side (Icon + Device Info)
+                  Expanded(
+                    child: Row(
                       children: [
                         Container(
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            shape: BoxShape.rectangle,
                             borderRadius: BorderRadius.circular(8),
                             color: cardColor,
                           ),
@@ -343,79 +389,129 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                             size: 20,
                           ),
                         ),
+
                         const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "AETHER SMART",
-                              style: TextStyle(
-                                color: textGrey,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.2,
+
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "AETHER SMART",
+                                style: TextStyle(
+                                  color: textGrey,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1.2,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              device_name.isEmpty ? "Alex's Home" : device_name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                              const SizedBox(height: 2),
+                              Text(
+                                device_name.isEmpty ? "" : device_name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.05),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isDeviceActive
-                                  ? const Color(0xFF00E676)
-                                  : Colors.red,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: isDeviceActive
-                                      ? const Color(0xFF00E676).withOpacity(0.5)
-                                      : Colors.red.withOpacity(0.5),
-                                  blurRadius: 4,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            isDeviceActive ? "ONLINE" : "OFFLINE",
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // ONLINE Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(.05),
                       ),
                     ),
-                  ],
-                ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: isDeviceActive
+                                ? const Color(0xff00E676)
+                                : Colors.red,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: isDeviceActive
+                                    ? const Color(0xff00E676).withOpacity(.5)
+                                    : Colors.red.withOpacity(.5),
+                                blurRadius: 5,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          isDeviceActive ? "ONLINE" : "OFFLINE",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 6),
+
+                  // Power Button
+                  GestureDetector(
+                    onTap: updatePower,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isPowerOn
+                            ? const Color(0xff162B45)
+                            : const Color(0xff2A2A2A),
+                        border: Border.all(
+                          color: isPowerOn
+                              ? Colors.greenAccent
+                              : Colors.grey,
+                          width: 1.3,
+                        ),
+                        boxShadow: [
+                          if (isPowerOn)
+                            BoxShadow(
+                              color: Colors.greenAccent.withOpacity(.35),
+                              blurRadius: 10,
+                            ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.power_settings_new,
+                        color: isPowerOn
+                            ? Colors.greenAccent
+                            : Colors.redAccent,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
 
                 const SizedBox(height: 30),
 
@@ -433,7 +529,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                   children: [
                     /// Minus Button
                     GestureDetector(
-                      onTap: () async{
+                      onTap: () async {
                         bool connected = await InternetService().hasInternet();
                         if (!connected) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -535,7 +631,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
                     /// Plus Button
                     GestureDetector(
-                      onTap: () async{
+                      onTap: () async {
                         bool connected = await InternetService().hasInternet();
                         if (!connected) {
                           ScaffoldMessenger.of(context).showSnackBar(
