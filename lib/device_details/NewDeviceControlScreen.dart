@@ -36,6 +36,8 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   Timer? _deviceDataTimer;
   bool isMinusPressed = false;
   bool isPlusPressed = false;
+  bool _isFetching = false;
+  bool _isWaitingForUpdate = false;
 
   // Design Colors
   final Color bgColorStart = const Color(0xFF0F1725);
@@ -81,9 +83,9 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     super.initState();
 
     loadUserDeviceList();
-    _deviceDataTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
-      getDeviceData();
-    });
+    // _deviceDataTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    //   getDeviceData();
+    // });
   }
 
   DeviceDataModel? getItem(String alias) {
@@ -96,11 +98,13 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
   @override
   void dispose() {
-    _deviceDataTimer?.cancel();
+    //_deviceDataTimer?.cancel();
     super.dispose();
   }
 
   Future<void> getDeviceData() async {
+    if (_isFetching) return;
+    _isFetching = true;
     try {
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
@@ -154,7 +158,37 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       }
     } catch (e) {
       setState(() => isLoading = false);
+    } finally {
+      _isFetching = false;
     }
+  }
+
+  Future<bool> waitForDeviceUpdate({
+    required String itemId,
+    required String expectedValue,
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    if (_isWaitingForUpdate) return false;
+
+    _isWaitingForUpdate = true;
+
+    final endTime = DateTime.now().add(timeout);
+
+    while (DateTime.now().isBefore(endTime)) {
+      await Future.delayed(const Duration(seconds: 1));
+
+      await getDeviceData();
+
+      final item = deviceData.where((e) => e.itemid == itemId);
+
+      if (item.isNotEmpty && item.first.val == expectedValue) {
+        _isWaitingForUpdate = false;
+        return true;
+      }
+    }
+
+    _isWaitingForUpdate = false;
+    return false;
   }
 
   Future<void> loadUserDeviceList() async {
@@ -245,6 +279,23 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     if (response.statusCode == 200) {
       getDeviceData();
     }
+
+    if (response.statusCode == 200) {
+      bool success = await waitForDeviceUpdate(
+        itemId: "2",
+        expectedValue: api_mode,
+      );
+
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Device is taking longer than expected.",
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> updatePower() async {
@@ -270,15 +321,22 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
         },
-        body: jsonEncode({
-          "devid": deviceId,
-          "itemid": "1",
-          "value": apiMode,
-        }),
+        body: jsonEncode({"devid": deviceId, "itemid": "1", "value": apiMode}),
       );
 
       if (response.statusCode == 200) {
-        getDeviceData(); // Refresh actual status from API
+        bool updated = await waitForDeviceUpdate(
+          itemId: "1",
+          expectedValue: apiMode.toString(),
+        );
+
+        if (!updated) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Power update is taking longer than expected."),
+            ),
+          );
+        }
       } else {
         // Revert UI if API fails
         setState(() {
@@ -323,14 +381,30 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+
         if (data["data"] != null && data["data"]["status"] == "106") {
           final apiMsg = data['data']?['msg'] ?? "Something went wrong";
+
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(apiMsg), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text(apiMsg),
+              backgroundColor: Colors.red,
+            ),
           );
+        } else {
+          bool updated = await waitForDeviceUpdate(
+            itemId: "3",
+            expectedValue: value.toString(),
+          );
+
+          if (!updated) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Temperature update is taking longer than expected."),
+              ),
+            );
+          }
         }
-        await Future.delayed(const Duration(seconds: 2));
-        await getDeviceData();
       }
     } catch (e) {
       print("TEMP UPDATE ERROR => $e");
@@ -370,148 +444,146 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                 const SizedBox(height: 12),
 
                 /// 🟢 HEADER
-              Row(
-                children: [
-                  // Left Side (Icon + Device Info)
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: cardColor,
-                          ),
-                          child: const Icon(
-                            Icons.heat_pump,
-                            color: Colors.lightBlue,
-                            size: 20,
-                          ),
-                        ),
-
-                        const SizedBox(width: 12),
-
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "AETHER SMART",
-                                style: TextStyle(
-                                  color: textGrey,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                device_name.isEmpty ? "" : device_name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  // ONLINE Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(.05),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: isDeviceActive
-                                ? const Color(0xff00E676)
-                                : Colors.red,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: isDeviceActive
-                                    ? const Color(0xff00E676).withOpacity(.5)
-                                    : Colors.red.withOpacity(.5),
-                                blurRadius: 5,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          isDeviceActive ? "ONLINE" : "OFFLINE",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 6),
-
-                  // Power Button
-                  GestureDetector(
-                    onTap: updatePower,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isPowerOn
-                            ? const Color(0xff162B45)
-                            : const Color(0xff2A2A2A),
-                        border: Border.all(
-                          color: isPowerOn
-                              ? Colors.greenAccent
-                              : Colors.grey,
-                          width: 1.3,
-                        ),
-                        boxShadow: [
-                          if (isPowerOn)
-                            BoxShadow(
-                              color: Colors.greenAccent.withOpacity(.35),
-                              blurRadius: 10,
+                Row(
+                  children: [
+                    // Left Side (Icon + Device Info)
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: cardColor,
                             ),
+                            child: const Icon(
+                              Icons.heat_pump,
+                              color: Colors.lightBlue,
+                              size: 20,
+                            ),
+                          ),
+
+                          const SizedBox(width: 12),
+
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  "AETHER SMART",
+                                  style: TextStyle(
+                                    color: textGrey,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  device_name.isEmpty ? "" : device_name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
-                      child: Icon(
-                        Icons.power_settings_new,
-                        color: isPowerOn
-                            ? Colors.greenAccent
-                            : Colors.redAccent,
-                        size: 20,
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    // ONLINE Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(.05),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: isDeviceActive
+                                  ? const Color(0xff00E676)
+                                  : Colors.red,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: isDeviceActive
+                                      ? const Color(0xff00E676).withOpacity(.5)
+                                      : Colors.red.withOpacity(.5),
+                                  blurRadius: 5,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            isDeviceActive ? "ONLINE" : "OFFLINE",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              ),
+
+                    const SizedBox(width: 6),
+
+                    // Power Button
+                    GestureDetector(
+                      onTap: updatePower,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isPowerOn
+                              ? const Color(0xff162B45)
+                              : const Color(0xff2A2A2A),
+                          border: Border.all(
+                            color: isPowerOn ? Colors.greenAccent : Colors.grey,
+                            width: 1.3,
+                          ),
+                          boxShadow: [
+                            if (isPowerOn)
+                              BoxShadow(
+                                color: Colors.greenAccent.withOpacity(.35),
+                                blurRadius: 10,
+                              ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.power_settings_new,
+                          color: isPowerOn
+                              ? Colors.greenAccent
+                              : Colors.redAccent,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
 
                 const SizedBox(height: 30),
 

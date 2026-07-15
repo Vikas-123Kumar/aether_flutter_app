@@ -1,12 +1,11 @@
 import java.util.Properties
 import java.io.FileInputStream
-
 plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
 }
-
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 
@@ -23,6 +22,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -31,7 +31,7 @@ android {
 
     defaultConfig {
         applicationId = "com.aethersmart.aether"
-        minSdk = 21
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -61,6 +61,9 @@ android {
             useLegacyPackaging = true
         }
     }
+}
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
 flutter {

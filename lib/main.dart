@@ -1,7 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:untitled/services/PushNotificationService.dart';
 import 'package:untitled/splash/SplashScreen.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:untitled/services/NotificationService.dart';
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // If you need to use Firebase services inside this handler, initialize it here
+  await Firebase.initializeApp();
+  print("Handling a background message: ${message.messageId}");
+}
+void main() async{
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
 
-void main() {
+  // 2. This will now look for the global function above and work perfectly
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // Initialize your notification class setup
+  final notificationService = PushNotificationService();
+  await notificationService.initialize();
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
     home: SplashScreen(),

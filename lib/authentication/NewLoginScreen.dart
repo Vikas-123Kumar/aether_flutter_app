@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
@@ -9,6 +10,7 @@ import 'package:untitled/authentication/rest/APIService.dart';
 import '../InternetService.dart';
 import '../common_function/SnackBar.dart';
 import '../device_details/HomeScreen.dart';
+import '../services/NotificationService.dart';
 import 'SignupScreen.dart';
 
 class NewLoginScreen extends StatefulWidget {
@@ -29,6 +31,9 @@ class _LoginScreenState extends State<NewLoginScreen> {
   Future<void> login() async {
     final String email = emailController.text.trim();
     final String password = passwordController.text.trim();
+    String? token = await NotificationService.getToken();
+    String? fcmToken = await FirebaseMessaging.instance.getToken();
+    print(" device token $token \n $fcmToken");
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -37,17 +42,16 @@ class _LoginScreenState extends State<NewLoginScreen> {
     }
     bool connected = await InternetService().hasInternet();
     if (!connected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("No Internet Connection"),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("No Internet Connection")));
       return;
     }
     try {
       final response = await api.post("userLogin", {
         "email": email,
         "password": password,
+        "device_token": fcmToken,
       });
 
       final data = response.data;
@@ -108,7 +112,8 @@ class _LoginScreenState extends State<NewLoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height:50),
+                    const SizedBox(height: 50),
+
                     /// Icon Box
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -201,7 +206,11 @@ class _LoginScreenState extends State<NewLoginScreen> {
                               )
                             : const Text(
                                 "Sign in",
-                                style: TextStyle(fontSize: 16,color: Colors.white,fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                       ),
                     ),
@@ -276,9 +285,9 @@ class _LoginScreenState extends State<NewLoginScreen> {
         obscureText: isPassword,
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon,  color: Colors.blueAccent),
+          prefixIcon: Icon(icon, color: Colors.blueAccent),
           hintText: hint,
-          hintStyle: const TextStyle( color: Colors.blueAccent),
+          hintStyle: const TextStyle(color: Colors.blueAccent),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 18),
         ),

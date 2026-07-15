@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:untitled/WelcomeScreen.dart';
 import 'dart:async';
@@ -22,6 +23,8 @@ class SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> checkLogin() async {
+    await Firebase.initializeApp();
+
     final prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString("token");
     print("token $token");
