@@ -19,6 +19,7 @@ class DeviceScheduleRequest {
   final String deviceId;
   final int temperature;
   final String timezones;
+  final String mode;
 
   /// Dynamic days
   final Map<String, List<ScheduleTime>> schedule;
@@ -28,6 +29,7 @@ class DeviceScheduleRequest {
     required this.temperature,
     required this.timezones,
     required this.schedule,
+    required this.mode,
   });
 
   Map<String, dynamic> toJson() {
@@ -35,6 +37,7 @@ class DeviceScheduleRequest {
       "device_id": deviceId,
       "temperature": temperature,
       "timezones": timezones,
+      "mode": mode,
       "schedule": schedule.map(
             (key, value) => MapEntry(
           key,

@@ -24,7 +24,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   String currentTemp = "0";
   String unit = "";
   int targetTemp = 52;
-  String selectedMode = "Comfort"; // Set a default to match design
+  String selectedMode = "Comfort";
   bool isUpdatingTemp = false;
   String mode = "ECO";
   bool isLoading = false;
@@ -39,6 +39,10 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   bool _isFetching = false;
   bool _isWaitingForUpdate = false;
 
+  // New Global Controls for API Triggers
+  bool _isProcessing = false;
+  Timer? _cooldownTimer;
+
   // Design Colors
   final Color bgColorStart = const Color(0xFF0F1725);
   final Color bgColorEnd = const Color(0xFF0A101A);
@@ -48,32 +52,23 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   String selectedButton = '';
 
   Color get activeThemeColor {
-    if (selectedMode == "Eco") {
-      return const Color(0xFF1E6E5B); // Neon Green
-    } else if (selectedMode == "Boost") {
-      return const Color(0xFF6A3C2A); // Bright Orange
-    } else {
-      return const Color(0xFF38B6FF); // Comfort Blue
-    }
+    if (selectedMode == "Eco") return const Color(0xFF1E6E5B);
+    if (selectedMode == "Boost") return const Color(0xFF6A3C2A);
+    return const Color(0xFF38B6FF);
   }
 
   Color get activeSolidColor {
-    if (selectedMode == "Eco") return const Color(0xFF1E6E5B); // Neon Green
-    if (selectedMode == "Boost") return const Color(0xFFF17637); // Deep Orange
-    return const Color(0xFF215D82); // Comfort Blue
+    if (selectedMode == "Eco") return const Color(0xFF1E6E5B);
+    if (selectedMode == "Boost") return const Color(0xFFF17637);
+    return const Color(0xFF215D82);
   }
 
-  // 2. Define the gradient colors for the dial and backgrounds
-  // 2. Define the gradient colors for the dial and backgrounds
   List<Color> get activeGradientColors {
     if (selectedMode == "Eco") {
-      // Vivid Green fading into Bright Cyan/Teal
       return [const Color(0xFF36E2A3), const Color(0xFF377E99)];
     } else if (selectedMode == "Boost") {
-      // Deep Orange fading into Bright Yellow
       return [const Color(0xFFD4926C), const Color(0xFF377E99)];
     } else {
-      // Rich Blue fading into Light Neon Blue
       return [const Color(0xFF5CD2FF), const Color(0x505CD2FF)];
     }
   }
@@ -81,11 +76,10 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   @override
   void initState() {
     super.initState();
-
     loadUserDeviceList();
-    // _deviceDataTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-    //   getDeviceData();
-    // });
+    _deviceDataTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      getDeviceData();
+    });
   }
 
   DeviceDataModel? getItem(String alias) {
@@ -98,8 +92,20 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
   @override
   void dispose() {
-    //_deviceDataTimer?.cancel();
+    _deviceDataTimer?.cancel();
+    _cooldownTimer?.cancel();
     super.dispose();
+  }
+
+  // Helper method to start standard 5-second lock window
+  void _startCooldown() {
+    setState(() => _isProcessing = true);
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    });
   }
 
   Future<void> getDeviceData() async {
@@ -110,7 +116,6 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       String token = prefs.getString("token") ?? "";
       String deviceId = DeviceInformations.act_device_id;
 
-      print("token" + token + "," + deviceId);
       final response = await http.get(
         Uri.parse(
           "https://aetherone.com.au/api/v1/heat-pump-2/devices/$deviceId/current-data",
@@ -124,8 +129,6 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         final decoded = jsonDecode(response.body);
         final List dataList = decoded['data']['data'];
         setState(() {
-          print(" get response" + dataList.length.toString());
-
           deviceData = dataList
               .map((e) => DeviceDataModel.fromJson(e))
               .toList();
@@ -146,7 +149,6 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           } else if (setPointDataMode.val == "2") {
             selectedMode = "Boost";
           }
-          print("current temp" + currentTemp);
           currentTemp = setPointData.val;
           targetTemp = int.parse(setPointData.val);
           unit = setPointData.unit;
@@ -169,16 +171,18 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     Duration timeout = const Duration(seconds: 20),
   }) async {
     if (_isWaitingForUpdate) return false;
-
     _isWaitingForUpdate = true;
 
     final endTime = DateTime.now().add(timeout);
-
+    print("after loader yes");
     while (DateTime.now().isBefore(endTime)) {
-      await Future.delayed(const Duration(seconds: 1));
+      // 🟢 CHANGED: Wait 5 seconds before making the next API status check
+      await Future.delayed(const Duration(seconds: 6));
+
+      // Check if we ran out of time while waiting
+      if (DateTime.now().isAfter(endTime)) break;
 
       await getDeviceData();
-
       final item = deviceData.where((e) => e.itemid == itemId);
 
       if (item.isNotEmpty && item.first.val == expectedValue) {
@@ -218,7 +222,6 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           );
           return;
         }
-        print("installer list" + devices.length.toString());
         Map firstDevice = devices[0];
         DeviceInformations.selectedDeviceId = firstDevice["device_id"]
             .toString();
@@ -226,8 +229,8 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
             .toString();
         DeviceInformations.selectedDeviceName = firstDevice["name"] ?? "";
         DeviceInformations.act_device_id = firstDevice["act_device_id"] ?? "";
-        if (!mounted) return;
 
+        if (!mounted) return;
         setState(() {
           isDeviceActive = firstDevice["is_online"] == 1;
           device_name = firstDevice["name"] ?? "";
@@ -235,14 +238,12 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
         getDeviceData();
         if (!mounted) return;
-
         setState(() {
           isCheckingDevices = false;
         });
       }
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
         isCheckingDevices = false;
       });
@@ -250,6 +251,9 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   }
 
   Future<void> updateMode(String mode) async {
+    if (_isProcessing) return; // Block fast multi-clicks
+    _startCooldown();
+
     String device_id = DeviceInformations.act_device_id;
     final modeItem = getItem("mode");
     if (modeItem == null) return;
@@ -265,50 +269,39 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     final prefs = await SharedPreferences.getInstance();
     String token = prefs.getString("token") ?? "";
 
-    setState(() => selectedMode = mode); // Optimistic UI update
+    setState(() => selectedMode = mode);
 
-    final response = await http.put(
-      Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      },
-      body: jsonEncode({"devid": device_id, "itemid": "2", "value": api_mode}),
-    );
-    if (response.statusCode == 200) {
-      getDeviceData();
-    }
-
-    if (response.statusCode == 200) {
-      bool success = await waitForDeviceUpdate(
-        itemId: "2",
-        expectedValue: api_mode,
+    try {
+      final response = await http.put(
+        Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({
+          "devid": device_id,
+          "itemid": "2",
+          "value": api_mode,
+        }),
       );
-
-      if (!success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Device is taking longer than expected.",
-            ),
-          ),
-        );
+      if (response.statusCode == 200) {
+        await waitForDeviceUpdate(itemId: "2", expectedValue: api_mode);
       }
+    } catch (e) {
+      print("MODE UPDATE ERROR => $e");
     }
   }
 
   Future<void> updatePower() async {
-    String deviceId = DeviceInformations.act_device_id;
+    if (_isProcessing) return; // Block fast multi-clicks
+    _startCooldown();
 
+    String deviceId = DeviceInformations.act_device_id;
     final prefs = await SharedPreferences.getInstance();
     String token = prefs.getString("token") ?? "";
-
-    // Current ON -> send 0
-    // Current OFF -> send 1
     int apiMode = isPowerOn ? 0 : 1;
 
-    // Optimistic UI update
     setState(() {
       isPowerOn = !isPowerOn;
     });
@@ -325,26 +318,16 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       );
 
       if (response.statusCode == 200) {
-        bool updated = await waitForDeviceUpdate(
+        await waitForDeviceUpdate(
           itemId: "1",
           expectedValue: apiMode.toString(),
         );
-
-        if (!updated) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Power update is taking longer than expected."),
-            ),
-          );
-        }
       } else {
-        // Revert UI if API fails
         setState(() {
           isPowerOn = !isPowerOn;
         });
       }
     } catch (e) {
-      // Revert UI on exception
       setState(() {
         isPowerOn = !isPowerOn;
       });
@@ -352,12 +335,14 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   }
 
   Future<void> updateTemperature(int value) async {
-    if (isUpdatingTemp) return;
+    if (_isProcessing || isUpdatingTemp) return; // Block fast multi-clicks
+    _startCooldown();
+
     String device_id = DeviceInformations.act_device_id;
 
     setState(() {
       isUpdatingTemp = true;
-      targetTemp = value; // Optimistic UI update
+      targetTemp = value;
     });
 
     try {
@@ -381,29 +366,16 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
         if (data["data"] != null && data["data"]["status"] == "106") {
           final apiMsg = data['data']?['msg'] ?? "Something went wrong";
-
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(apiMsg),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(apiMsg), backgroundColor: Colors.red),
           );
         } else {
-          bool updated = await waitForDeviceUpdate(
+          await waitForDeviceUpdate(
             itemId: "3",
             expectedValue: value.toString(),
           );
-
-          if (!updated) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Temperature update is taking longer than expected."),
-              ),
-            );
-          }
         }
       }
     } catch (e) {
@@ -436,437 +408,500 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 12),
-
-                /// 🟢 HEADER
-                Row(
+          child: Stack(
+            children: [
+              SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Left Side (Icon + Device Info)
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              color: cardColor,
+                    const SizedBox(height: 12),
+
+                    /// 🟢 HEADER
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: cardColor,
+                                ),
+                                child: const Icon(
+                                  Icons.heat_pump,
+                                  color: Colors.lightBlue,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      "AETHER SMART",
+                                      style: TextStyle(
+                                        color: textGrey,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      device_name.isEmpty ? "" : device_name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+
+                        // ONLINE Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cardColor,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(.05),
                             ),
-                            child: const Icon(
-                              Icons.heat_pump,
-                              color: Colors.lightBlue,
-                              size: 20,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: isDeviceActive
+                                      ? const Color(0xff00E676)
+                                      : Colors.red,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: isDeviceActive
+                                          ? const Color(
+                                              0xff00E676,
+                                            ).withOpacity(.5)
+                                          : Colors.red.withOpacity(.5),
+                                      blurRadius: 5,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                isDeviceActive ? "ONLINE" : "OFFLINE",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+
+                        // Power Button (Grayed out/Opacity applied when processing)
+                        GestureDetector(
+                          onTap: _isProcessing ? null : updatePower,
+                          child: Opacity(
+                            opacity: _isProcessing ? 0.5 : 1.0,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 250),
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isPowerOn
+                                    ? const Color(0xff162B45)
+                                    : const Color(0xff2A2A2A),
+                                border: Border.all(
+                                  color: isPowerOn
+                                      ? Colors.greenAccent
+                                      : Colors.grey,
+                                  width: 1.3,
+                                ),
+                                boxShadow: [
+                                  if (isPowerOn)
+                                    BoxShadow(
+                                      color: Colors.greenAccent.withOpacity(
+                                        .35,
+                                      ),
+                                      blurRadius: 10,
+                                    ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.power_settings_new,
+                                color: isPowerOn
+                                    ? Colors.greenAccent
+                                    : Colors.redAccent,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    /// 🔵 CIRCULAR DIAL
+                    ThermostatDial(
+                      temperature: currentTemp,
+                      solidColor: activeSolidColor,
+                      gradientColors: activeGradientColors,
+                    ),
+                    const SizedBox(height: 20),
+
+                    /// ➖ ➕ TARGET CONTROLS (Tied to _isProcessing)
+                    Opacity(
+                      opacity: _isProcessing ? 0.6 : 1.0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          /// Minus Button
+                          GestureDetector(
+                            onTap: _isProcessing
+                                ? null
+                                : () async {
+                                    bool connected = await InternetService()
+                                        .hasInternet();
+                                    if (!connected) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "No Internet Connection",
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    setState(() {
+                                      selectedButton = 'minus';
+                                    });
+                                    if (targetTemp > 35) {
+                                      updateTemperature(targetTemp - 1);
+                                    }
+                                  },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              width: 46,
+                              height: 46,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: selectedButton == 'minus'
+                                    ? accentBlue
+                                    : cardColor,
+                                border: Border.all(
+                                  color: selectedButton == 'minus'
+                                      ? accentBlue
+                                      : Colors.white.withOpacity(0.05),
+                                ),
+                                boxShadow: selectedButton == 'minus'
+                                    ? [
+                                        BoxShadow(
+                                          color: accentBlue.withOpacity(0.6),
+                                          blurRadius: 15,
+                                          spreadRadius: 2,
+                                        ),
+                                      ]
+                                    : [],
+                              ),
+                              child: Icon(
+                                Icons.remove,
+                                color: selectedButton == 'minus'
+                                    ? Colors.white
+                                    : accentBlue,
+                                size: 24,
+                              ),
                             ),
                           ),
 
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 15),
 
-                          Expanded(
+                          /// Target Pill
+                          Container(
+                            width: 120,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.05),
+                              ),
+                            ),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  "AETHER SMART",
+                                  "TARGET",
                                   style: TextStyle(
                                     color: textGrey,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
-                                    letterSpacing: 1.2,
+                                    letterSpacing: 1,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
-                                Text(
-                                  device_name.isEmpty ? "" : device_name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                                isUpdatingTemp
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Text(
+                                        "$targetTemp°C",
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ],
+                            ),
+                          ),
+
+                          const SizedBox(width: 15),
+
+                          /// Plus Button
+                          GestureDetector(
+                            onTap: _isProcessing
+                                ? null
+                                : () async {
+                                    bool connected = await InternetService()
+                                        .hasInternet();
+                                    if (!connected) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "No Internet Connection",
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    setState(() {
+                                      selectedButton = 'plus';
+                                    });
+                                    if (targetTemp < 75) {
+                                      updateTemperature(targetTemp + 1);
+                                    }
+                                  },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              width: 46,
+                              height: 46,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: selectedButton == 'plus'
+                                    ? accentBlue
+                                    : cardColor,
+                                border: Border.all(
+                                  color: selectedButton == 'plus'
+                                      ? accentBlue
+                                      : Colors.white.withOpacity(0.05),
+                                ),
+                                boxShadow: selectedButton == 'plus'
+                                    ? [
+                                        BoxShadow(
+                                          color: accentBlue.withOpacity(0.6),
+                                          blurRadius: 15,
+                                          spreadRadius: 2,
+                                        ),
+                                      ]
+                                    : [],
+                              ),
+                              child: Icon(
+                                Icons.add,
+                                color: selectedButton == 'plus'
+                                    ? Colors.white
+                                    : accentBlue,
+                                size: 24,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
 
-                    const SizedBox(width: 8),
+                    const SizedBox(height: 30),
 
-                    // ONLINE Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
+                    /// 🔘 MODE BUTTONS
+                    Opacity(
+                      opacity: _isProcessing ? 0.6 : 1.0,
+                      child: Row(
+                        children: [
+                          _buildModeCard(
+                            "Eco",
+                            "Save energy",
+                            Icons.energy_savings_leaf_outlined,
+                            selectedMode == "Eco",
+                          ),
+                          const SizedBox(width: 10),
+                          _buildModeCard(
+                            "Comfort",
+                            "Everyday balance",
+                            Icons.shield_outlined,
+                            selectedMode == "Comfort",
+                          ),
+                          const SizedBox(width: 10),
+                          _buildModeCard(
+                            "Boost",
+                            "Fast heat",
+                            Icons.local_fire_department_outlined,
+                            selectedMode == "Boost",
+                          ),
+                        ],
                       ),
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(.05),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    /// 📋 LIST TILES
+                    _buildListTile(
+                      icon: Icons.ac_unit,
+                      title: "Defrost cycle",
+                      subtitle: "Tap to start a manual defrost",
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          "OFF",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: isDeviceActive
-                                  ? const Color(0xff00E676)
-                                  : Colors.red,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: isDeviceActive
-                                      ? const Color(0xff00E676).withOpacity(.5)
-                                      : Colors.red.withOpacity(.5),
-                                  blurRadius: 5,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            isDeviceActive ? "ONLINE" : "OFFLINE",
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
+                    ),
+                    _buildListTile(
+                      icon: Icons.cloud_outlined,
+                      title: "OUTSIDE - SYDNEY",
+                      subtitle: "12°C • Clear • drops to 8° tonight",
+                      trailing: const Icon(
+                        Icons.diamond_outlined,
+                        color: Colors.amber,
+                        size: 20,
                       ),
                     ),
+                    _buildListTile(
+                      icon: Icons.calendar_today_outlined,
+                      title: "NEXT SCHEDULE",
+                      subtitle: "Daytime eco • Today • 09:00",
+                      trailing: Icon(Icons.chevron_right, color: textGrey),
+                    ),
+                    _buildListTile(
+                      icon: Icons.notifications_none,
+                      title: "1 ACTIVE ALERT",
+                      subtitle: "Annual service due in 14 days",
+                      trailing: Icon(
+                        Icons.chevron_right,
+                        color: Colors.orangeAccent,
+                      ),
+                      outlineColor: Colors.orangeAccent,
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
 
-                    const SizedBox(width: 6),
-
-                    // Power Button
-                    GestureDetector(
-                      onTap: updatePower,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        width: 30,
-                        height: 30,
+              /// ⏳ Subtle Overlay Loader during API Cooldown
+              /// ⏳ Centered Full-Screen Dimming Loader during API Updates
+              if (_isProcessing)
+                Positioned.fill(
+                  child: Container(
+                    // Dim the background screen slightly to indicate a busy state
+                    color: Colors.black.withOpacity(0.4),
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 20,
+                        ),
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isPowerOn
-                              ? const Color(0xff162B45)
-                              : const Color(0xff2A2A2A),
+                          color: cardColor, // Keeps your theme matching
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: isPowerOn ? Colors.greenAccent : Colors.grey,
-                            width: 1.3,
+                            color: accentBlue.withOpacity(0.3),
                           ),
                           boxShadow: [
-                            if (isPowerOn)
-                              BoxShadow(
-                                color: Colors.greenAccent.withOpacity(.35),
-                                blurRadius: 10,
-                              ),
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.5),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
                           ],
                         ),
-                        child: Icon(
-                          Icons.power_settings_new,
-                          color: isPowerOn
-                              ? Colors.greenAccent
-                              : Colors.redAccent,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 30),
-
-                /// 🔵 CIRCULAR DIAL
-                ThermostatDial(
-                  temperature: currentTemp,
-                  solidColor: activeSolidColor,
-                  gradientColors: activeGradientColors,
-                ),
-                const SizedBox(height: 20),
-
-                /// ➖ ➕ TARGET CONTROLS
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    /// Minus Button
-                    GestureDetector(
-                      onTap: () async {
-                        bool connected = await InternetService().hasInternet();
-                        if (!connected) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("No Internet Connection"),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min, // Keeps it compact
+                          children: [
+                            SizedBox(
+                              width: 35,
+                              height: 35,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                color: accentBlue,
+                              ),
                             ),
-                          );
-                          return;
-                        }
-                        setState(() {
-                          selectedButton = 'minus';
-                        });
-                        if (targetTemp > 35) {
-                          updateTemperature(targetTemp - 1);
-                        }
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: selectedButton == 'minus'
-                              ? accentBlue
-                              : cardColor,
-                          border: Border.all(
-                            color: selectedButton == 'minus'
-                                ? accentBlue
-                                : Colors.white.withOpacity(0.05),
-                          ),
-                          boxShadow: selectedButton == 'minus'
-                              ? [
-                                  BoxShadow(
-                                    color: accentBlue.withOpacity(0.6),
-                                    blurRadius: 15,
-                                    spreadRadius: 2,
-                                  ),
-                                ]
-                              : [],
-                        ),
-                        child: Icon(
-                          Icons.remove,
-                          color: selectedButton == 'minus'
-                              ? Colors.white
-                              : accentBlue,
-                          size: 24,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 15),
-
-                    /// Target Pill
-                    Container(
-                      width: 120,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.05),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            "TARGET",
-                            style: TextStyle(
-                              color: textGrey,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1,
+                            const SizedBox(height: 16),
+                            const Text(
+                              "Updating Device...",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          isUpdatingTemp
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  "$targetTemp°C",
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(width: 15),
-
-                    /// Plus Button
-                    GestureDetector(
-                      onTap: () async {
-                        bool connected = await InternetService().hasInternet();
-                        if (!connected) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("No Internet Connection"),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Syncing with hardware",
+                              style: TextStyle(color: textGrey, fontSize: 11),
                             ),
-                          );
-                          return;
-                        }
-                        setState(() {
-                          selectedButton = 'plus';
-                        });
-                        if (targetTemp < 75) {
-                          updateTemperature(targetTemp + 1);
-                        }
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: selectedButton == 'plus'
-                              ? accentBlue
-                              : cardColor,
-                          border: Border.all(
-                            color: selectedButton == 'plus'
-                                ? accentBlue
-                                : Colors.white.withOpacity(0.05),
-                          ),
-                          boxShadow: selectedButton == 'plus'
-                              ? [
-                                  BoxShadow(
-                                    color: accentBlue.withOpacity(0.6),
-                                    blurRadius: 15,
-                                    spreadRadius: 2,
-                                  ),
-                                ]
-                              : [],
+                          ],
                         ),
-                        child: Icon(
-                          Icons.add,
-                          color: selectedButton == 'plus'
-                              ? Colors.white
-                              : accentBlue,
-                          size: 24,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 30),
-
-                /// 🔘 MODE BUTTONS
-                Row(
-                  children: [
-                    _buildModeCard(
-                      "Eco",
-                      "Save energy",
-                      Icons.energy_savings_leaf_outlined,
-                      selectedMode == "Eco",
-                    ),
-                    const SizedBox(width: 10),
-                    _buildModeCard(
-                      "Comfort",
-                      "Everyday balance",
-                      Icons.shield_outlined,
-                      selectedMode == "Comfort",
-                    ),
-                    const SizedBox(width: 10),
-                    _buildModeCard(
-                      "Boost",
-                      "Fast heat",
-                      Icons.local_fire_department_outlined,
-                      selectedMode == "Boost",
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-
-                /// 📋 LIST TILES
-                _buildListTile(
-                  icon: Icons.ac_unit,
-                  title: "Defrost cycle",
-                  subtitle: "Tap to start a manual defrost",
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      "OFF",
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ),
-                _buildListTile(
-                  icon: Icons.cloud_outlined,
-                  title: "OUTSIDE - SYDNEY",
-                  subtitle: "12°C • Clear • drops to 8° tonight",
-                  trailing: const Icon(
-                    Icons.diamond_outlined,
-                    color: Colors.amber,
-                    size: 20,
-                  ),
-                ),
-                _buildListTile(
-                  icon: Icons.calendar_today_outlined,
-                  title: "NEXT SCHEDULE",
-                  subtitle: "Daytime eco • Today • 09:00",
-                  trailing: Icon(Icons.chevron_right, color: textGrey),
-                ),
-                _buildListTile(
-                  icon: Icons.notifications_none,
-                  title: "1 ACTIVE ALERT",
-                  subtitle: "Annual service due in 14 days",
-                  trailing: Icon(
-                    Icons.chevron_right,
-                    color: Colors.orangeAccent,
-                  ),
-                  outlineColor: Colors.orangeAccent,
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
+            ],
           ),
         ),
       ),
-
-      /// 📱 BOTTOM NAVIGATION BAR
-      // bottomNavigationBar: Theme(
-      //   data: ThemeData(
-      //     splashColor: Colors.transparent,
-      //     highlightColor: Colors.transparent,
-      //   ),
-      //   child: BottomNavigationBar(
-      //     backgroundColor: bgColorEnd,
-      //     type: BottomNavigationBarType.fixed,
-      //     selectedItemColor: accentBlue,
-      //     unselectedItemColor: textGrey,
-      //     showSelectedLabels: true,
-      //     showUnselectedLabels: true,
-      //     selectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-      //     unselectedLabelStyle: const TextStyle(fontSize: 10),
-      //     elevation: 0,
-      //     items: const [
-      //       BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.home_filled)), label: "Home"),
-      //       BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.timer_outlined)), label: "Timer"),
-      //       BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.notifications_outlined)), label: "Alerts"),
-      //       BottomNavigationBarItem(icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.person_outline)), label: "Profile"),
-      //     ],
-      //   ),
-      // ),
     );
   }
 
@@ -878,29 +913,27 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   ) {
     return Expanded(
       child: GestureDetector(
-        onTap: () async {
-          bool connected = await InternetService().hasInternet();
-
-          if (!connected) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("No Internet Connection")),
-            );
-            return;
-          }
-          updateMode(title);
-        },
+        onTap: _isProcessing
+            ? null
+            : () async {
+                bool connected = await InternetService().hasInternet();
+                if (!connected) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("No Internet Connection")),
+                  );
+                  return;
+                }
+                updateMode(title);
+              },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            // UPDATED: Stronger start color, fading out
             gradient: isSelected
                 ? LinearGradient(
                     colors: [
                       activeGradientColors.first.withOpacity(0.25),
-                      // Brighter top-left
                       activeGradientColors.last.withOpacity(0.05),
-                      // Darker bottom-right
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -953,7 +986,6 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     );
   }
 
-  /// Helper to build the List Tiles
   Widget _buildListTile({
     required IconData icon,
     required String title,

@@ -296,7 +296,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: _isLoading ? null : logout,
+                      onPressed: _isLoading ? null : () => showLogoutDialog(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF00B4D8),
                         shape: RoundedRectangleBorder(
@@ -797,6 +797,140 @@ class _ProfileScreenState extends State<NewProfileScreen> {
         text,
         style: const TextStyle(color: Color(0xFF00B4D8), fontSize: 9),
       ),
+    );
+  }
+
+  Future<void> showLogoutDialog(BuildContext context)  {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF162B45),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white10,
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.35),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+
+                // Icon
+                Container(
+                  height: 70,
+                  width: 70,
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    color: Colors.redAccent,
+                    size: 34,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                const Text(
+                  "Logout",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                const Text(
+                  "Are you sure you want to logout from your account?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 15,
+                    height: 1.5,
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                Row(
+                  children: [
+
+                    /// Cancel Button
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(
+                            color: Colors.grey.shade600,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text(
+                          "Cancel",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 14),
+
+                    /// Logout Button
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+
+                          // TODO: Perform Logout
+                           logout();
+                        },
+                        child: const Text(
+                          "Logout",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
