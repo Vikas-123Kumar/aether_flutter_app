@@ -77,7 +77,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   void initState() {
     super.initState();
     loadUserDeviceList();
-    _deviceDataTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    _deviceDataTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
       getDeviceData();
     });
   }
@@ -251,6 +251,12 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   }
 
   Future<void> updateMode(String mode) async {
+    if (!isDeviceActive) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Device is offline")));
+      return;
+    }
     if (_isProcessing) return; // Block fast multi-clicks
     _startCooldown();
 
@@ -294,6 +300,12 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   }
 
   Future<void> updatePower() async {
+    if (!isDeviceActive) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Device is offline")));
+      return;
+    }
     if (_isProcessing) return; // Block fast multi-clicks
     _startCooldown();
 
@@ -335,6 +347,12 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   }
 
   Future<void> updateTemperature(int value) async {
+    if (!isDeviceActive) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Device is offline")));
+      return;
+    }
     if (_isProcessing || isUpdatingTemp) return; // Block fast multi-clicks
     _startCooldown();
 

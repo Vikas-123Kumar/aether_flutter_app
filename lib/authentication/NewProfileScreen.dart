@@ -5,6 +5,7 @@ import 'package:untitled/DeviceInformations.dart';
 import 'package:untitled/assist/AssistScreen.dart';
 import 'package:untitled/authentication/NewLoginScreen.dart';
 import 'package:untitled/authentication/rest/APIService.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 
 import '../InternetService.dart';
@@ -34,12 +35,18 @@ class _ProfileScreenState extends State<NewProfileScreen> {
   bool isFamilyLoading = true;
   bool isLoading = false;
   String deviceId = DeviceInformations.selectedDeviceId;
+  String installerName = "";
+  String companyName = "";
+  String installerEmail = "";
+  String installerPhone = "";
+  String licenceNo = "";
 
   @override
   void initState() {
     super.initState();
     _fetchProfile();
     getFamilyMembers();
+    getdeviceDetails();
   }
 
   Future<void> getFamilyMembers() async {
@@ -84,6 +91,47 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     }
   }
 
+  Future<void> getdeviceDetails() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String token = prefs.getString("token") ?? "";
+      String deviceId = DeviceInformations.selectedDeviceId;
+      final response = await http.post(
+        Uri.parse("https://aetherone.com.au/api/v1/deviceDetails"),
+        headers: {
+          "Accept": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: {"device_id": deviceId},
+      );
+
+      print("STATUS : ${response.statusCode}");
+      print("BODY : ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        setState(() {
+          final installer = data["device"]["installer"];
+          if (installer != null) {
+            setState(() {
+              installerName = installer["installer_name"] ?? "";
+              companyName = installer["company_name"] ?? "";
+              installerEmail = installer["email"] ?? "";
+              installerPhone = installer["phone_number"] ?? "";
+              licenceNo = installer["licence_no"] ?? "";
+            });
+          }
+        });
+      } else {
+        setState(() {
+          isFamilyLoading = false;
+        });
+      }
+    } catch (e) {
+      print("ERROR : $e");
+    }
+  }
 
   Future<void> _fetchProfile() async {
     setState(() {
@@ -186,9 +234,9 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       bool connected = await InternetService().hasInternet();
 
       if (!connected) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No Internet Connection")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("No Internet Connection")));
         return;
       }
       final response = await api.post("logout", {});
@@ -292,44 +340,68 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                   const SizedBox(height: 4),
                   _buildFamilyAndGuests(),
                   const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : () => showLogoutDialog(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00B4D8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.0),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Text(
-                              "Logout",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                  const Text(
+                    "INSTALLER & SUPPORT",
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                      letterSpacing: 1,
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  companyName.isNotEmpty
+                      ? _buildInstallerAndSupport()
+                      : _buildNoInstallerCard(),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading
+                          ? null
+                          : () => showLogoutDialog(context),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: const Color(0xFF14213D),
+                        side: BorderSide(
+                          color: Colors.blueGrey.shade700,
+                          width: 1,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      icon: _isLoading
+                          ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.redAccent,
+                        ),
+                      )
+                          : const Icon(
+                        Icons.logout_rounded,
+                        color: Colors.redAccent,
+                        size: 18,
+                      ),
+                      label: Text(
+                        _isLoading ? "" : "Sign out",
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 45,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : moveConnect,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00B4D8),
+                        backgroundColor: const Color(0xFF39AEFB),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16.0),
                         ),
@@ -353,19 +425,22 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                             ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 15),
 
                   if (deviceId.isEmpty)
                     SizedBox(
                       width: double.infinity,
-                      height: 50,
+                      height: 45,
                       child: ElevatedButton(
                         onPressed: () async {
-                          bool connected = await InternetService().hasInternet();
+                          bool connected = await InternetService()
+                              .hasInternet();
 
                           if (!connected) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("No Internet Connection")),
+                              const SnackBar(
+                                content: Text("No Internet Connection"),
+                              ),
                             );
                             return;
                           }
@@ -377,31 +452,30 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00B4D8),
+                          backgroundColor: const Color(0xFF39AEFB),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                         child: _isLoading
                             ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
                             : const Text(
-                          "Sync Device",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                                "Sync Device",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
-                  //_buildInstallerAndSupport(),
                 ],
               ),
             ),
@@ -553,11 +627,11 @@ class _ProfileScreenState extends State<NewProfileScreen> {
               icon: const Icon(
                 Icons.person_add,
                 size: 14,
-                color: Color(0xFF00B4D8),
+                color: Color(0xFF39AEFB),
               ),
               label: const Text(
                 "Invite",
-                style: TextStyle(color: Color(0xFF00B4D8), fontSize: 12),
+                style: TextStyle(color: Color(0xFF39AEFB), fontSize: 12),
               ),
             ),
           ],
@@ -800,7 +874,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     );
   }
 
-  Future<void> showLogoutDialog(BuildContext context)  {
+  Future<void> showLogoutDialog(BuildContext context) {
     return showDialog(
       context: context,
       barrierDismissible: false,
@@ -812,10 +886,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
             decoration: BoxDecoration(
               color: const Color(0xFF162B45),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white10,
-                width: 1,
-              ),
+              border: Border.all(color: Colors.white10, width: 1),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.35),
@@ -827,7 +898,6 @@ class _ProfileScreenState extends State<NewProfileScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-
                 // Icon
                 Container(
                   height: 70,
@@ -870,15 +940,12 @@ class _ProfileScreenState extends State<NewProfileScreen> {
 
                 Row(
                   children: [
-
                     /// Cancel Button
                     Expanded(
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: BorderSide(
-                            color: Colors.grey.shade600,
-                          ),
+                          side: BorderSide(color: Colors.grey.shade600),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -914,13 +981,11 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                           Navigator.pop(context);
 
                           // TODO: Perform Logout
-                           logout();
+                          logout();
                         },
                         child: const Text(
                           "Logout",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -932,5 +997,285 @@ class _ProfileScreenState extends State<NewProfileScreen> {
         );
       },
     );
+  }
+
+  Widget _buildInstallerAndSupport() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF132A4C),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF2A4B73),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          ///==================== TOP ====================///
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: const Color(0xFF2DB8FF),
+                    width: 1,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.handyman_outlined,
+                  color: Color(0xFF33C2FF),
+                  size: 20,
+                ),
+              ),
+
+              const SizedBox(width: 14),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      companyName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+
+                    const SizedBox(height: 3),
+
+                    Text(
+                      "Technician: $installerName",
+                      style: const TextStyle(
+                        color: Color(0xFFA2B3D1),
+                        fontSize: 13,
+                      ),
+                    ),
+
+                    const SizedBox(height: 3),
+
+                    Text(
+                      "AU-LIC $licenceNo",
+                      style: const TextStyle(
+                        color: Color(0xFF7484A3),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 18),
+          ///==================== BUTTONS ====================///
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => makePhoneCall(installerPhone),
+                  child: Container(
+                    height: 60,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1C665D),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: const Color(0xFF2D8E83),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 25,
+                          height: 25,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(.08),
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          child: const Icon(
+                            Icons.call,
+                            color: Color(0xFF56F0AE),
+                            size: 18,
+                          ),
+                        ),
+
+                        const SizedBox(width: 10),
+
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "CALL",
+                                style: TextStyle(
+                                  color: Color(0xFF62E6C5),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+
+                              const SizedBox(height: 3),
+
+                              Text(
+                                installerPhone,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 10),
+
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => sendEmail(installerEmail),
+                  child: Container(
+                    height: 60,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A416D),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: const Color(0xFF2D8BD2),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 25,
+                          height: 25,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(.08),
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          child: const Icon(
+                            Icons.email_outlined,
+                            color: Color(0xFF38C7FF),
+                            size: 18,
+                          ),
+                        ),
+
+                        const SizedBox(width: 10),
+
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "EMAIL",
+                                style: TextStyle(
+                                  color: Color(0xFF38C7FF),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+
+                              const SizedBox(height: 3),
+
+                              Text(
+                                installerEmail,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _buildNoInstallerCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF162544),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Column(
+        children: [
+          Icon(Icons.handyman_outlined, color: Colors.grey, size: 30),
+          SizedBox(height: 10),
+          Text(
+            "No Installer Assigned",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+          SizedBox(height: 5),
+          Text(
+            "This device doesn't have an installer linked yet.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> makePhoneCall(String phone) async {
+    final Uri uri = Uri(scheme: 'tel', path: phone);
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      debugPrint("Could not launch $uri");
+    }
+  }
+
+  Future<void> sendEmail(String email) async {
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: email,
+    );
+
+    if (await canLaunchUrl(emailUri)) {
+      await launchUrl(
+        emailUri,
+        mode: LaunchMode.externalApplication,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No email application found."),
+        ),
+      );
+    }
   }
 }
