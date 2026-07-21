@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:untitled/WeatherListing.dart';
 import 'package:untitled/scheduletimer/ScheduleScreen.dart';
 import 'package:untitled/authentication/NewProfileScreen.dart';
 
@@ -44,7 +45,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return [
       NewDeviceControlScreen(),
       ScheduleScreen(),
-      AlertsScreen(),
+      NotificationScreen(),
       NewProfileScreen(),
     ];
   }

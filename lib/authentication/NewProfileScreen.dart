@@ -40,13 +40,17 @@ class _ProfileScreenState extends State<NewProfileScreen> {
   String installerEmail = "";
   String installerPhone = "";
   String licenceNo = "";
-
+  bool isSettingEnable = false;
+  bool _smartNotificationEnabled = false;
+  bool _isLoadingSettings = true;
+  bool _isUpdatingSetting = false;
   @override
   void initState() {
     super.initState();
     _fetchProfile();
     getFamilyMembers();
     getdeviceDetails();
+    _fetchSettings();
   }
 
   Future<void> getFamilyMembers() async {
@@ -266,6 +270,75 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     }
   }
 
+  Future<void> _fetchSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String token = prefs.getString("token") ?? "";
+      final response = await http.get(
+        Uri.parse('https://aetherone.com.au/api/v1/settings'),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final settings = data['settings'] ?? data['data'];
+        final String value = settings['smartNotification'] ?? 'No';
+
+        setState(() {
+          _smartNotificationEnabled = (value.toLowerCase() == 'yes');
+          _isLoadingSettings = false;
+        });
+      }
+    } catch (e) {
+      setState(() => _isLoadingSettings = false);
+    }
+  }
+
+  // --- API 2: Update Setting Value ---
+  Future<void> _toggleSmartNotification(bool newValue) async {
+    setState(() {
+      _smartNotificationEnabled = newValue;
+      _isUpdatingSetting = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String token = prefs.getString("token") ?? "";
+      final response = await http.post(
+        Uri.parse('https://aetherone.com.au/api/v1/settings'),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({'smartNotification': newValue ? 'Yes' : 'No'}),
+      );
+
+      if (response.statusCode != 200) {
+        // Revert on failure
+        setState(() => _smartNotificationEnabled = !newValue);
+      }
+    } catch (e) {
+      // Revert on network error
+      setState(() => _smartNotificationEnabled = !newValue);
+    } finally {
+      setState(() => _isUpdatingSetting = false);
+    }
+  }
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -372,18 +445,18 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                       ),
                       icon: _isLoading
                           ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.redAccent,
-                        ),
-                      )
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.redAccent,
+                              ),
+                            )
                           : const Icon(
-                        Icons.logout_rounded,
-                        color: Colors.redAccent,
-                        size: 18,
-                      ),
+                              Icons.logout_rounded,
+                              color: Colors.redAccent,
+                              size: 18,
+                            ),
                       label: Text(
                         _isLoading ? "" : "Sign out",
                         style: const TextStyle(
@@ -476,6 +549,99 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                               ),
                       ),
                     ),
+                  Row(
+                    children: [
+                      /// POWER CARD
+                      Expanded(
+                        child:
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF132A4C),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFF2A4B73), width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "PREFERENCES",
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Container(
+                                    height: 30,
+                                    width: 30,
+                                    decoration: BoxDecoration(
+                                      color: _smartNotificationEnabled
+                                          ? Colors.blue.withOpacity(.15)
+                                          : Colors.grey.withOpacity(.15),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.notifications_active_outlined,
+                                      color: _smartNotificationEnabled
+                                          ? Colors.blue
+                                          : Colors.grey,
+                                    ),
+                                  ),
+
+                                  const SizedBox(width: 16),
+
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          "Smart Notifications",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "Receive weather alerts and smart warnings.",
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(.6),
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+
+                                  _isUpdatingSetting
+                                      ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                      : Switch(
+                                    value: _smartNotificationEnabled,
+                                    activeColor: Colors.blue,
+                                    onChanged: (value) async {
+                                      _toggleSmartNotification(value);
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -1005,10 +1171,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF132A4C),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFF2A4B73),
-          width: 1,
-        ),
+        border: Border.all(color: const Color(0xFF2A4B73), width: 1),
       ),
       child: Column(
         children: [
@@ -1021,10 +1184,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                 height: 40,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: const Color(0xFF2DB8FF),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFF2DB8FF), width: 1),
                 ),
                 child: const Icon(
                   Icons.handyman_outlined,
@@ -1074,6 +1234,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
           ),
 
           const SizedBox(height: 18),
+
           ///==================== BUTTONS ====================///
           Row(
             children: [
@@ -1087,9 +1248,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFF1C665D),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: const Color(0xFF2D8E83),
-                      ),
+                      border: Border.all(color: const Color(0xFF2D8E83)),
                     ),
                     child: Row(
                       children: [
@@ -1137,7 +1296,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                               ),
                             ],
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -1156,9 +1315,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFF1A416D),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: const Color(0xFF2D8BD2),
-                      ),
+                      border: Border.all(color: const Color(0xFF2D8BD2)),
                     ),
                     child: Row(
                       children: [
@@ -1207,7 +1364,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                               ),
                             ],
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -1219,6 +1376,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       ),
     );
   }
+
   Widget _buildNoInstallerCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1260,21 +1418,13 @@ class _ProfileScreenState extends State<NewProfileScreen> {
   }
 
   Future<void> sendEmail(String email) async {
-    final Uri emailUri = Uri(
-      scheme: 'mailto',
-      path: email,
-    );
+    final Uri emailUri = Uri(scheme: 'mailto', path: email);
 
     if (await canLaunchUrl(emailUri)) {
-      await launchUrl(
-        emailUri,
-        mode: LaunchMode.externalApplication,
-      );
+      await launchUrl(emailUri, mode: LaunchMode.externalApplication);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("No email application found."),
-        ),
+        const SnackBar(content: Text("No email application found.")),
       );
     }
   }
