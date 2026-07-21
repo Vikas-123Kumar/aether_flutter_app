@@ -10,6 +10,7 @@ import 'package:untitled/authentication/model/Device.dart';
 import 'package:untitled/pairdevice/ConnectScreen.dart';
 
 import '../InternetService.dart';
+import '../WeatherForecastScreen.dart';
 import '../authentication/NewLoginScreen.dart';
 import '../authentication/model/DeviceDataModel.dart';
 import '../authentication/rest/APIService.dart';
@@ -42,6 +43,10 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   // New Global Controls for API Triggers
   bool _isProcessing = false;
   Timer? _cooldownTimer;
+  List<dynamic> weatherList = [];
+  String error = "";
+  String location = "";
+  String timezone = "";
 
   // Design Colors
   final Color bgColorStart = const Color(0xFF0F1725);
@@ -80,6 +85,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     _deviceDataTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
       getDeviceData();
     });
+    getWeatherForecast();
   }
 
   DeviceDataModel? getItem(String alias) {
@@ -162,6 +168,44 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       setState(() => isLoading = false);
     } finally {
       _isFetching = false;
+    }
+  }
+
+  Future<void> getWeatherForecast() async {
+    setState(() {
+      isLoading = true;
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String token = prefs.getString("token") ?? "";
+      final response = await http.get(
+        Uri.parse("https://aetherone.com.au/api/v1/next8DaysWeather"),
+        headers: {
+          "Accept": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+      final json = jsonDecode(response.body);
+      if (response.statusCode == 200 && json["success"] == true) {
+        setState(() {
+          weatherList = json["data"];
+          location = json["location"]["name"];
+          timezone = json["timezone"];
+          isLoading = false;
+          final today = weatherList.first;
+        });
+      } else {
+        setState(() {
+          error = json["message"];
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        error = e.toString();
+
+        isLoading = false;
+      });
     }
   }
 
@@ -803,55 +847,69 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                     const SizedBox(height: 20),
 
                     /// 📋 LIST TILES
-                    _buildListTile(
-                      icon: Icons.ac_unit,
-                      title: "Defrost cycle",
-                      subtitle: "Tap to start a manual defrost",
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Text(
-                          "OFF",
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                    // _buildListTile(
+                    //   icon: Icons.ac_unit,
+                    //   title: "Defrost cycle",
+                    //   subtitle: "Tap to start a manual defrost",
+                    //   trailing: Container(
+                    //     padding: const EdgeInsets.symmetric(
+                    //       horizontal: 10,
+                    //       vertical: 4,
+                    //     ),
+                    //     decoration: BoxDecoration(
+                    //       color: Colors.white.withOpacity(0.1),
+                    //       borderRadius: BorderRadius.circular(10),
+                    //     ),
+                    //     child: const Text(
+                    //       "OFF",
+                    //       style: TextStyle(
+                    //         color: Colors.white70,
+                    //         fontSize: 10,
+                    //         fontWeight: FontWeight.bold,
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
+                    weatherList.isEmpty
+                        ? const SizedBox()
+                        : InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => WeatherForecastScreen(),
+                                ),
+                              );
+                            },
+                            child: _buildListTile(
+                              icon: getWeatherIcon(weatherList[0]["condition"]),
+                              title: "OUTSIDE - ${location.toUpperCase()}",
+                              subtitle:
+                                  "${weatherList[0]["condition"]} • ${weatherList[0]["precipitation_probability_max"]}% rain • Wind ${weatherList[0]["wind_gusts_10m_max"]} km/h",
+                              trailing: const Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                color: Colors.white70,
+                                size: 18,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                    _buildListTile(
-                      icon: Icons.cloud_outlined,
-                      title: "OUTSIDE - SYDNEY",
-                      subtitle: "12°C • Clear • drops to 8° tonight",
-                      trailing: const Icon(
-                        Icons.diamond_outlined,
-                        color: Colors.amber,
-                        size: 20,
-                      ),
-                    ),
-                    _buildListTile(
-                      icon: Icons.calendar_today_outlined,
-                      title: "NEXT SCHEDULE",
-                      subtitle: "Daytime eco • Today • 09:00",
-                      trailing: Icon(Icons.chevron_right, color: textGrey),
-                    ),
-                    _buildListTile(
-                      icon: Icons.notifications_none,
-                      title: "1 ACTIVE ALERT",
-                      subtitle: "Annual service due in 14 days",
-                      trailing: Icon(
-                        Icons.chevron_right,
-                        color: Colors.orangeAccent,
-                      ),
-                      outlineColor: Colors.orangeAccent,
-                    ),
+                    // _buildListTile(
+                    //   icon: Icons.calendar_today_outlined,
+                    //   title: "NEXT SCHEDULE",
+                    //   subtitle: "Daytime eco • Today • 09:00",
+                    //   trailing: Icon(Icons.chevron_right, color: textGrey),
+                    // ),
+                    // _buildListTile(
+                    //   icon: Icons.notifications_none,
+                    //   title: "1 ACTIVE ALERT",
+                    //   subtitle: "Annual service due in 14 days",
+                    //   trailing: Icon(
+                    //     Icons.chevron_right,
+                    //     color: Colors.orangeAccent,
+                    //   ),
+                    //   outlineColor: Colors.orangeAccent,
+                    // ),
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -921,6 +979,30 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         ),
       ),
     );
+  }
+
+  IconData getWeatherIcon(String condition) {
+    switch (condition.toLowerCase()) {
+      case "stormy":
+        return Icons.thunderstorm;
+
+      case "drizzle":
+      case "light drizzle":
+        return Icons.grain;
+
+      case "rain":
+        return Icons.umbrella;
+
+      case "cloudy":
+        return Icons.cloud;
+
+      case "sunny":
+      case "clear":
+        return Icons.wb_sunny;
+
+      default:
+        return Icons.cloud_queue;
+    }
   }
 
   Widget _buildModeCard(

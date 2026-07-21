@@ -48,7 +48,7 @@ class _DashboardScreenState extends State<Installerlist> {
       final prefs = await SharedPreferences.getInstance();
       int user_id = prefs.getInt("user_id") ??0;
       print("user id"+user_id.toString());
-      final response = await ApiService().get("listUserDevices");
+      final response = await ApiService().get("listInstallerInstalledDevices");
       final data = response.data;
       if (data["message"] == "Unauthenticated." || response.statusCode == 401) {
         Navigator.pushAndRemoveUntil(

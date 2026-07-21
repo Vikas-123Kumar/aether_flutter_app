@@ -40,9 +40,8 @@ class WeatherNotification {
       forecastDate: json['forecast_date'] ?? '',
       weatherCode: json['weather_code'] ?? 0,
       precipitationProbability:
-      (json['precipitation_probability_max'] as num?)?.toDouble() ?? 0.0,
-      precipitationSum:
-      (json['precipitation_sum'] as num?)?.toDouble() ?? 0.0,
+          (json['precipitation_probability_max'] as num?)?.toDouble() ?? 0.0,
+      precipitationSum: (json['precipitation_sum'] as num?)?.toDouble() ?? 0.0,
       windGusts: (json['wind_gusts_10m_max'] as num?)?.toDouble() ?? 0.0,
       sentAt: json['sent_at'] ?? '',
       isRead: json['is_read'] ?? false,
@@ -67,7 +66,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchNotifications();
+    _fetchNotifications(status: "sent", readStatus: "unread");
   }
 
   Future<void> _fetchNotifications({
@@ -85,16 +84,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString("token") ?? "";
 
-      final uri = Uri.https(
-        'aetherone.com.au',
-        '/api/v1/notifications',
-        {
-          'page': page.toString(),
-          'per_page': perPage.toString(),
-          if (status != null) 'status': status,
-          if (readStatus != null) 'read_status': readStatus,
-        },
-      );
+      final uri = Uri.https('aetherone.com.au', '/api/v1/notifications', {
+        'page': page.toString(),
+        'per_page': perPage.toString(),
+        if (status != null) 'status': status,
+        if (readStatus != null) 'read_status': readStatus,
+      });
 
       final response = await http.get(
         uri,
@@ -109,13 +104,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
         if (responseData['success'] == true) {
           final List<dynamic> dataList = responseData['data'] ?? [];
-
+          print(dataList);
           setState(() {
             _notifications = dataList
                 .map((item) => WeatherNotification.fromJson(item))
                 .toList();
 
-            _unreadCount = responseData['unread_count'] ??
+            _unreadCount =
+                responseData['unread_count'] ??
                 _notifications.where((n) => !n.isRead).length;
 
             _isLoading = false;
@@ -136,11 +132,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
     } catch (e) {
       setState(() {
         _errorMessage =
-        'Unable to connect to server. Please check your internet connection.';
+            'Unable to connect to server. Please check your internet connection.';
         _isLoading = false;
       });
     }
   }
+
   void _markAllAsRead() {
     setState(() {
       for (var item in _notifications) {
@@ -154,22 +151,29 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFA6AFB8),
+      backgroundColor: const Color(0xFF0C101B),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+        ),
+        backgroundColor: Colors.transparent,
         title: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Notifications',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
-            if (_unreadCount > 0) ...[
+           /* if (_unreadCount > 0) ...[
               const SizedBox(width: 8),
               Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.blueAccent,
                   borderRadius: BorderRadius.circular(12),
@@ -183,7 +187,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   ),
                 ),
               ),
-            ]
+            ]*/
           ],
         ),
         actions: [
@@ -202,9 +206,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   Widget _buildBody() {
     // 1. Loading State
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     // 2. Error State
@@ -215,7 +217,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline_rounded, size: 54, color: Colors.redAccent),
+              const Icon(
+                Icons.error_outline_rounded,
+                size: 54,
+                color: Colors.redAccent,
+              ),
               const SizedBox(height: 12),
               Text(
                 _errorMessage!,
@@ -227,7 +233,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 onPressed: _fetchNotifications,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
-              )
+              ),
             ],
           ),
         ),
@@ -254,7 +260,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   ),
                   child: Icon(
                     Icons.notifications_off_outlined,
-                    size: 56,
+                    size: 40,
                     color: Colors.grey.shade400,
                   ),
                 ),
@@ -264,7 +270,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -338,10 +344,14 @@ class _NotificationCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: notification.isRead ? Colors.white : Colors.blue.shade50.withOpacity(0.5),
+        color: notification.isRead
+            ? Colors.white
+            : Colors.blue.shade50.withOpacity(0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: notification.isRead ? Colors.grey.shade200 : Colors.blue.shade200,
+          color: notification.isRead
+              ? Colors.grey.shade200
+              : Colors.blue.shade200,
           width: 1,
         ),
         boxShadow: [
@@ -369,7 +379,11 @@ class _NotificationCard extends StatelessWidget {
                       color: themeColor.withOpacity(0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(_getWeatherIcon(notification.weatherCode), color: themeColor, size: 22),
+                    child: Icon(
+                      _getWeatherIcon(notification.weatherCode),
+                      color: themeColor,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -384,7 +398,9 @@ class _NotificationCard extends StatelessWidget {
                                 notification.title,
                                 style: TextStyle(
                                   fontSize: 15,
-                                  fontWeight: notification.isRead ? FontWeight.w600 : FontWeight.bold,
+                                  fontWeight: notification.isRead
+                                      ? FontWeight.w600
+                                      : FontWeight.bold,
                                   color: Colors.black87,
                                 ),
                               ),
@@ -403,7 +419,10 @@ class _NotificationCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           '${notification.locationLabel} • ${notification.forecastDate}',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
                         ),
                       ],
                     ),
@@ -413,7 +432,11 @@ class _NotificationCard extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 notification.body,
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade800, height: 1.3),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade800,
+                  height: 1.3,
+                ),
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -422,7 +445,8 @@ class _NotificationCard extends StatelessWidget {
                 children: [
                   _MetricBadge(
                     icon: Icons.umbrella_outlined,
-                    label: '${notification.precipitationProbability.toInt()}% rain',
+                    label:
+                        '${notification.precipitationProbability.toInt()}% rain',
                   ),
                   _MetricBadge(
                     icon: Icons.air_rounded,
@@ -447,7 +471,8 @@ class _MetricBadge extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const _MetricBadge({Key? key, required this.icon, required this.label}) : super(key: key);
+  const _MetricBadge({Key? key, required this.icon, required this.label})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -464,7 +489,11 @@ class _MetricBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),

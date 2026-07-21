@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:untitled/DeviceInformations.dart';
+import 'package:untitled/NotificationScreen.dart';
 import 'package:untitled/assist/AssistScreen.dart';
 import 'package:untitled/authentication/NewLoginScreen.dart';
 import 'package:untitled/authentication/rest/APIService.dart';
@@ -208,6 +209,17 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     required String userId,
   }) async {
     try {
+      bool connected = await InternetService().hasInternet();
+
+      if (!connected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No Internet Connection")),
+        );
+        return {
+          "success": false,
+          "message": "No Internet Connection",
+        };
+      }
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
 
@@ -220,9 +232,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
         },
         body: jsonEncode({"device_id": deviceId, "user_id": userId}),
       );
-
       final data = jsonDecode(response.body);
-
       return {
         "success": response.statusCode == 200,
         "message": data["message"] ?? "Unknown error",
@@ -236,7 +246,6 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     final api = ApiService();
     try {
       bool connected = await InternetService().hasInternet();
-
       if (!connected) {
         ScaffoldMessenger.of(
           context,
@@ -306,6 +315,14 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     });
 
     try {
+      bool connected = await InternetService().hasInternet();
+
+      if (!connected) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("No Internet Connection")));
+        return;
+      }
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
       final response = await http.post(
@@ -365,23 +382,21 @@ class _ProfileScreenState extends State<NewProfileScreen> {
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: ElevatedButton.icon(
+            padding: const EdgeInsets.only(right: 16),
+            child: IconButton(
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => AssistScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationScreen(),
+                  ),
                 );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF162544),
-                foregroundColor: const Color(0xFF00B4D8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
+              icon: const Icon(
+                Icons.notifications_outlined,
+                color: Colors.white,
+                size: 28,
               ),
-              icon: const Icon(Icons.star_border, size: 16),
-              label: const Text("Assist"),
             ),
           ),
         ],
@@ -425,133 +440,10 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                   companyName.isNotEmpty
                       ? _buildInstallerAndSupport()
                       : _buildNoInstallerCard(),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton.icon(
-                      onPressed: _isLoading
-                          ? null
-                          : () => showLogoutDialog(context),
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: const Color(0xFF14213D),
-                        side: BorderSide(
-                          color: Colors.blueGrey.shade700,
-                          width: 1,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      icon: _isLoading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.redAccent,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.logout_rounded,
-                              color: Colors.redAccent,
-                              size: 18,
-                            ),
-                      label: Text(
-                        _isLoading ? "" : "Sign out",
-                        style: const TextStyle(
-                          color: Colors.redAccent,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 45,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : moveConnect,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF39AEFB),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.0),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Text(
-                              "Update Wifi Credential",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    ),
-                  ),
                   const SizedBox(height: 15),
 
-                  if (deviceId.isEmpty)
-                    SizedBox(
-                      width: double.infinity,
-                      height: 45,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          bool connected = await InternetService()
-                              .hasInternet();
-
-                          if (!connected) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("No Internet Connection"),
-                              ),
-                            );
-                            return;
-                          }
-
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (context) => Syncdevice(),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF39AEFB),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text(
-                                "Sync Device",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
-                    ),
                   Row(
                     children: [
-                      /// POWER CARD
                       Expanded(
                         child:
                         Container(
@@ -639,9 +531,131 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 14),
                     ],
                   ),
+                  const SizedBox(height: 15),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading
+                          ? null
+                          : () => showLogoutDialog(context),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: const Color(0xFF14213D),
+                        side: BorderSide(
+                          color: Colors.blueGrey.shade700,
+                          width: 1,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      icon: _isLoading
+                          ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.redAccent,
+                        ),
+                      )
+                          : const Icon(
+                        Icons.logout_rounded,
+                        color: Colors.redAccent,
+                        size: 18,
+                      ),
+                      label: Text(
+                        _isLoading ? "" : "Sign out",
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 45,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : moveConnect,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF39AEFB),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16.0),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                          : const Text(
+                        "Update Wifi Credential",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  if (deviceId.isEmpty)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          bool connected = await InternetService()
+                              .hasInternet();
+
+                          if (!connected) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("No Internet Connection"),
+                              ),
+                            );
+                            return;
+                          }
+
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) => Syncdevice(),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF39AEFB),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                            : const Text(
+                          "Sync Device",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
