@@ -26,7 +26,7 @@ class PushNotificationService {
     }
 
     // 2. Setup Local Notifications (Needed for Foreground state)
-    const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/app_icon');
     const DarwinInitializationSettings iosInit = DarwinInitializationSettings();
     const InitializationSettings initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
 
@@ -54,7 +54,7 @@ class PushNotificationService {
               _channel.id,
               _channel.name,
               channelDescription: _channel.description,
-              icon: android.smallIcon,
+              icon: '@mipmap/app_icon',
             ),
           ),
         );

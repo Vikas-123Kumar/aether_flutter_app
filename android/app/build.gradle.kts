@@ -18,7 +18,7 @@ android {
     compileSdk = flutter.compileSdkVersion
 
     ndkVersion = "27.0.12077973"
-
+    compileSdk = 36
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -32,6 +32,7 @@ android {
     defaultConfig {
         applicationId = "com.aethersmart.aether"
         minSdk = 23
+        targetSdk = 36
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

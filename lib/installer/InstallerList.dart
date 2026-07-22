@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:untitled/CustomerInformation.dart';
 import 'package:untitled/installer/InstallerDeviceInfoScreen.dart';
 import 'package:untitled/pairdevice/ConnectScreen.dart';
 
@@ -34,20 +35,19 @@ class _DashboardScreenState extends State<Installerlist> {
   bool isLoading = true;
   int totalDevices = 0;
   int onlineDevices = 0;
+
   Future<void> loadUserDeviceList() async {
     try {
       bool connected = await InternetService().hasInternet();
       if (!connected) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("No Internet Connection"),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("No Internet Connection")));
         return;
       }
       final prefs = await SharedPreferences.getInstance();
-      int user_id = prefs.getInt("user_id") ??0;
-      print("user id"+user_id.toString());
+      int user_id = prefs.getInt("user_id") ?? 0;
+      print("user id" + user_id.toString());
       final response = await ApiService().get("listInstallerInstalledDevices");
       final data = response.data;
       if (data["message"] == "Unauthenticated." || response.statusCode == 401) {
@@ -63,9 +63,7 @@ class _DashboardScreenState extends State<Installerlist> {
           devices = data["devices"] ?? [];
           isLoading = false;
           totalDevices = devices.length;
-          onlineDevices = devices
-              .where((d) => d["is_online"] == 1)
-              .length;
+          onlineDevices = devices.where((d) => d["is_online"] == 1).length;
         });
       }
     } catch (e) {
@@ -113,30 +111,44 @@ class _DashboardScreenState extends State<Installerlist> {
                       )
                     : ListView.builder(
                         itemCount: devices.length,
-                  itemBuilder: (context, index) {
-                    final device = devices[index];
+                        itemBuilder: (context, index) {
+                          final device = devices[index];
+                          final customer = device["customer"];
 
-                    return GestureDetector(
-                      onTap: () {
-                        String deviceId = device["serial_number"].toString();
-                        String device_name = device["name"].toString();
-                        String serial_number = device["device_id"].toString();
-                        String is_online = device["is_online"].toString();
-                        DeviceInformations.act_device_id=deviceId;
-                        DeviceInformations.selectedDeviceName=device_name;
-                        DeviceInformations.selectedSerialNumber=serial_number;
-                       DeviceInformations.is_online=is_online;
-                        // Example navigation
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => Installerdeviceinfoscreen(deviceId: deviceId),
-                          ),
-                        );
-                      },
-                      child: _deviceCard(device),
-                    );
-                  },
+                          return GestureDetector(
+                            onTap: () {
+                              String deviceId = device["serial_number"]
+                                  .toString();
+                              String device_name = device["name"].toString();
+                              String serial_number = device["device_id"]
+                                  .toString();
+                              String is_online = device["is_online"].toString();
+                              DeviceInformations.act_device_id = deviceId;
+                              DeviceInformations.selectedDeviceName =
+                                  device_name;
+                              DeviceInformations.selectedSerialNumber =
+                                  serial_number;
+                              DeviceInformations.is_online = is_online;
+                              CustomerInformation.customerName =
+                                  customer?["name"] ?? "";
+                              CustomerInformation.customerEmail =
+                                  customer?["email"] ?? "";
+                              ;
+                              CustomerInformation.customerPhone =
+                                  customer?["phone"] ?? "";
+                              // Example navigation
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => Installerdeviceinfoscreen(
+                                    deviceId: deviceId,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: _deviceCard(device),
+                          );
+                        },
                       ),
               ),
             ],
@@ -199,7 +211,9 @@ class _DashboardScreenState extends State<Installerlist> {
   Widget _statsRow() {
     return Row(
       children: [
-        Expanded(child: _statCard("SYSTEMS",totalDevices, "$onlineDevices online")),
+        Expanded(
+          child: _statCard("SYSTEMS", totalDevices, "$onlineDevices online"),
+        ),
         const SizedBox(width: 10),
         Expanded(child: _statCard("OPEN ALERTS", 0, "0 need attention")),
       ],

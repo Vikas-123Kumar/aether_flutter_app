@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:untitled/CustomerInformation.dart';
 import 'package:untitled/DeviceInformations.dart';
 import 'package:untitled/authentication/model/Device.dart';
 import 'package:untitled/pairdevice/ConnectScreen.dart';
@@ -35,6 +36,7 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
   List<DeviceDataModel> deviceData = [];
   bool isDeviceActive = false;
   String device_name = "";
+
   Color get activeThemeColor {
     if (selectedMode == "Eco") {
       return const Color(0xFF1E6E5B); // Neon Green
@@ -44,6 +46,7 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
       return const Color(0xFF38B6FF); // Comfort Blue
     }
   }
+
   final Color bgColorStart = const Color(0xFF0F1725);
   final Color bgColorEnd = const Color(0xFF0A101A);
   final Color cardColor = const Color(0xFF131F33);
@@ -70,6 +73,7 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
       return [const Color(0xFF5CD2FF), const Color(0x505CD2FF)];
     }
   }
+
   @override
   @override
   void initState() {
@@ -111,8 +115,8 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
         int length = dataList.length;
         print("list size$length");
         setState(() {
-          if(DeviceInformations.is_online=="1"){
-            isDeviceActive=true;
+          if (DeviceInformations.is_online == "1") {
+            isDeviceActive = true;
           }
           deviceData = dataList
               .map((e) => DeviceDataModel.fromJson(e))
@@ -426,6 +430,7 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
                                   SizedBox(height: 4),
                                 ],
                               ),
+
                               /// Toggle
                               GestureDetector(
                                 // onTap: () {
@@ -622,21 +627,36 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
                   //     }),
                   //   ],
                   // ),
-
                   const SizedBox(height: 30),
 
                   /// 🔘 MODE BUTTONS
                   Row(
                     children: [
-                      _buildModeCard("Eco", "Save energy", Icons.energy_savings_leaf_outlined, selectedMode == "Eco"),
+                      _buildModeCard(
+                        "Eco",
+                        "Save energy",
+                        Icons.energy_savings_leaf_outlined,
+                        selectedMode == "Eco",
+                      ),
                       const SizedBox(width: 10),
-                      _buildModeCard("Comfort", "Everyday balance", Icons.shield_outlined, selectedMode == "Comfort"),
+                      _buildModeCard(
+                        "Comfort",
+                        "Everyday balance",
+                        Icons.shield_outlined,
+                        selectedMode == "Comfort",
+                      ),
                       const SizedBox(width: 10),
-                      _buildModeCard("Boost", "Fast heat", Icons.local_fire_department_outlined, selectedMode == "Boost"),
+                      _buildModeCard(
+                        "Boost",
+                        "Fast heat",
+                        Icons.local_fire_department_outlined,
+                        selectedMode == "Boost",
+                      ),
                     ],
                   ),
                   const SizedBox(height: 30),
-
+                  buildCustomerCard(),
+                  const SizedBox(height: 15),
                   /// INFO CARDS
                   // _infoCard("Defrost cycle", "Tap to start manual defrost"),
                   // _infoCard("Next Schedule", "Morning shower - Tomorrow 05:30"),
@@ -649,41 +669,168 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
     );
   }
 
+  Widget buildCustomerCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF162544),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(.08),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.person,
+                color: Color(0xFF00B4D8),
+                size: 26,
+              ),
+              SizedBox(width: 10),
+              Text(
+                "Customer Details",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          buildInfoRow(
+            Icons.person_outline,
+            "Name",
+            CustomerInformation.customerName.isNotEmpty
+                ? CustomerInformation.customerName
+                : "-",
+          ),
+
+          const Divider(color: Colors.white24),
+
+          buildInfoRow(
+            Icons.email_outlined,
+            "Email",
+            CustomerInformation.customerEmail.isNotEmpty
+                ? CustomerInformation.customerEmail
+                : "-",
+          ),
+
+          const Divider(color: Colors.white24),
+
+          buildInfoRow(
+            Icons.phone_outlined,
+            "Phone",
+            CustomerInformation.customerPhone.isNotEmpty
+                ? CustomerInformation.customerPhone
+                : "-",
+          ),
+        ],
+      ),
+    );
+  }
+  Widget buildInfoRow(IconData icon, String title, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: const Color(0xFF00B4D8), size: 22),
+
+        const SizedBox(width: 12),
+
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(.6),
+                  fontSize: 13,
+                ),
+              ),
+
+              const SizedBox(height: 3),
+
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   /// 🔘 Mode Card
-  Widget _buildModeCard(String title, String subtitle, IconData icon, bool isSelected) {
+  Widget _buildModeCard(
+    String title,
+    String subtitle,
+    IconData icon,
+    bool isSelected,
+  ) {
     return Expanded(
       child: GestureDetector(
-
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
             // UPDATED: Stronger start color, fading out
-            gradient: isSelected ? LinearGradient(
-              colors: [
-                activeGradientColors.first.withOpacity(0.25), // Brighter top-left
-                activeGradientColors.last.withOpacity(0.05),  // Darker bottom-right
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ) : null,
+            gradient: isSelected
+                ? LinearGradient(
+                    colors: [
+                      activeGradientColors.first.withOpacity(0.25),
+                      // Brighter top-left
+                      activeGradientColors.last.withOpacity(0.05),
+                      // Darker bottom-right
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
             color: isSelected ? null : cardColor,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? activeSolidColor : Colors.white.withOpacity(0.03),
+              color: isSelected
+                  ? activeSolidColor
+                  : Colors.white.withOpacity(0.03),
               width: 1.5,
             ),
-            boxShadow: isSelected ? [
-              BoxShadow(color: activeSolidColor.withOpacity(0.2), blurRadius: 15, spreadRadius: 1)
-            ] : [],
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: activeSolidColor.withOpacity(0.2),
+                      blurRadius: 15,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : [],
           ),
           child: Column(
             children: [
-              Icon(icon, color: isSelected ? activeSolidColor : textGrey, size: 24),
+              Icon(
+                icon,
+                color: isSelected ? activeSolidColor : textGrey,
+                size: 24,
+              ),
               const SizedBox(height: 10),
               Text(
                 title,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -697,5 +844,4 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
       ),
     );
   }
-
 }
