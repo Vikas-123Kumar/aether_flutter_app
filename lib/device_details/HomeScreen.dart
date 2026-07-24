@@ -13,6 +13,7 @@ import '../authentication/rest/APIService.dart';
 import '../erroralert/AlertsScreen.dart';
 import '../installer/InstallerList.dart';
 import '../installer/InstallerProfile.dart';
+import '../scheduletimer/NewScheduleScreen.dart';
 import 'NewDeviceControlScreen.dart';
 
 
@@ -45,7 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return [
       NewDeviceControlScreen(),
-      ScheduleScreen(),
+      ScheduleDashboardScreen(),
       AlertsScreen(),
       NewProfileScreen(),
     ];

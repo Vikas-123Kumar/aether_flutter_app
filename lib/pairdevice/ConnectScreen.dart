@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -139,6 +140,10 @@ class _ConnectScreenState extends State<ConnectScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0C101B),
       appBar: AppBar(
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+        ),
         automaticallyImplyLeading: false,
         titleSpacing: 15,
         backgroundColor: Colors.transparent,

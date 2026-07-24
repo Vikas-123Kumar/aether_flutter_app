@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:untitled/authentication/rest/APIService.dart';
 
 import '../authentication/model/AlertModel.dart';
@@ -15,14 +16,21 @@ class _AlertsScreenState extends State<AlertsScreen> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: const Color(0xFF0C101B),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.black,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+    );
     alertsFuture = api.fetchAlerts();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Container(
+    return Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFF0A1F44), Color(0xFF000814)],
@@ -59,8 +67,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _header() {

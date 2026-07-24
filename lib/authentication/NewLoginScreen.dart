@@ -61,6 +61,7 @@ class _LoginScreenState extends State<NewLoginScreen> {
 
         String token = data["token"];
         int userId = data["user"]["id"];
+        String timezone = data["user"]["timezone"];
 
         ApiService().setToken(token);
 
@@ -68,6 +69,7 @@ class _LoginScreenState extends State<NewLoginScreen> {
 
         await prefs.setString("token", token);
         await prefs.setInt("user_id", userId);
+        await prefs.setString("timezone", timezone);
         await prefs.setString("current_role", data["current_role"]);
         String role = data["current_role"];
         print("User ID: $userId  $role");

@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:untitled/DeviceInformations.dart';
 import 'dart:convert';
 
+import 'package:untitled/DeviceInformations.dart';
 import '../InternetService.dart';
-import '../authentication/model/ScheduleTime.dart';
 
 class CreateScheduleScreen extends StatefulWidget {
   const CreateScheduleScreen({super.key});
 
   @override
-  State<CreateScheduleScreen> createState() => _ScheduleScreenState();
+  State<CreateScheduleScreen> createState() => _CreateScheduleScreenState();
 }
 
-class _ScheduleScreenState extends State<CreateScheduleScreen> {
+class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
   TimeOfDay _turnOnTime = const TimeOfDay(hour: 7, minute: 0);
   TimeOfDay _turnOffTime = const TimeOfDay(hour: 8, minute: 0);
   double _targetWaterTemp = 30.0;
@@ -23,86 +23,104 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
   final List<bool> _selectedDays = List.filled(7, false);
   bool _isScheduleActive = true;
   bool _isLoading = false;
-  final Map<String, Color> modeColors = {
-    'Eco': const Color(0xFF00E5A8),      // Green
-    'Boost': const Color(0xFF3FA9F5),    // Blue
-    'Comfort': const Color(0xFFFF8A3D),  // Orange
-  };
-  final Map<String, List<Color>> modeGradients = {
-    'Eco': const [
-      Color(0xFF1B4D46),
-      Color(0xFF173A49),
-      Color(0xFF162B45),
-    ],
-    'Boost': const [
-      Color(0xFF184B73),
-      Color(0xFF1B3B5E),
-      Color(0xFF162B45),
-    ],
-    'Comfort': const [
-      Color(0xFF5A3828),
-      Color(0xFF403244),
-      Color(0xFF162B45),
-    ],
-  };
-  // Custom Colors Matching the design
-  final Color bgColor = const Color(0xFF0C101B);
-  final Color cardColor = const Color(0xFF161F33);
-  final Color accentBlue = const Color(0xFF39AEFB);
 
-  Future<void> setSchedule({
-    required String deviceId,
-    required int temperature,
-    required String timezone,
-    required Map<String, List<ScheduleTime>> schedule,
-  }) async {
+  final TextEditingController scheduleController = TextEditingController();
+
+  // Figma Theme Base Colors
+  final Color bgColor = const Color(0xFF070B12);
+  final Color cardBg = const Color(0xFF0F1726);
+  final Color innerCardBg = const Color(0xFF142033);
+  final Color accentBlue = const Color(0xFF38B6FF);
+  final Color subTextColor = const Color(0xFF7A8B9E);
+
+  // Distinct Accent Colors for Each Mode
+  final Map<String, Color> modeColors = {
+    'Eco': const Color(0xFF00E5A8), // Green
+    'Boost': const Color(0xFFFF6B35), // Orange/Red
+    'Comfort': const Color(0xFF38B6FF), // Cyan Blue
+  };
+
+  // Distinct Background Card Colors when Selected
+  final Map<String, Color> modeSelectedBgs = {
+    'Eco': const Color(0xFF0D2823),
+    'Boost': const Color(0xFF2C1C17),
+    'Comfort': const Color(0xFF10283B),
+  };
+
+  final Map<String, String> _dayNameMap = {
+    'Mon': 'monday',
+    'Tue': 'tuesday',
+    'Wed': 'wednesday',
+    'Thu': 'thursday',
+    'Fri': 'friday',
+    'Sat': 'saturday',
+    'Sun': 'sunday',
+  };
+
+  int _getModeValue(String mode) {
+    switch (mode) {
+      case 'Eco':
+        return 0;
+      case 'Comfort':
+        return 1;
+      case 'Boost':
+        return 2;
+      default:
+        return 1;
+    }
+  }
+
+  void _selectPresetDays(String type) {
+    setState(() {
+      if (type == 'Weekdays') {
+        for (int i = 0; i < 7; i++) {
+          _selectedDays[i] = i < 5;
+        }
+      } else if (type == 'Weekends') {
+        for (int i = 0; i < 7; i++) {
+          _selectedDays[i] = i >= 5;
+        }
+      } else if (type == 'Daily') {
+        for (int i = 0; i < 7; i++) {
+          _selectedDays[i] = true;
+        }
+      }
+    });
+  }
+
+  Future<void> setSchedule(Map<String, dynamic> payload) async {
     try {
-      // NOTE: Make sure DeviceScheduleRequest is properly imported/implemented in your project structure
-      String api_mode = "0";
-      if (_selectedMode == "Eco")
-        api_mode = "0";
-      else if (_selectedMode == "Comfort")
-        api_mode = "1";
-      else if (_selectedMode == "Boost")
-        api_mode = "2";
-      final body = DeviceScheduleRequest(
-        deviceId: deviceId,
-        temperature: temperature,
-        timezones: timezone,
-        mode: api_mode,
-        schedule: schedule,
-      );
-      print(body);
       bool connected = await InternetService().hasInternet();
       if (!connected) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("No Internet Connection")));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No Internet Connection")),
+          );
+        }
         return;
       }
+
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
 
       final response = await http.post(
-        Uri.parse("https://aetherone.com.au/api/v1/deviceTimeSchedule"),
+        Uri.parse("https://aetherone.com.au/api/v1/timerSchedules"),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
           "Accept": "application/json",
         },
-        body: jsonEncode(body.toJson()),
+        body: jsonEncode(payload),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print("Success: ${response.body}");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Schedule created successfully!")),
           );
-          Navigator.of(context).pop(); // Go back home after successful create
+          Navigator.of(context).pop(true);
         }
       } else {
-        print("Failed: ${response.body}");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Server error: ${response.statusCode}")),
@@ -110,7 +128,6 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
         }
       }
     } catch (e) {
-      print(e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("An error occurred. Please try again.")),
@@ -120,47 +137,48 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
   }
 
   Future<void> _createSchedule() async {
+    List<String> selectedDays = [];
+    for (int i = 0; i < _days.length; i++) {
+      if (_selectedDays[i]) {
+        selectedDays.add(_dayNameMap[_days[i]]!);
+      }
+    }
+
+    if (selectedDays.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select at least one day")),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      List<String> selectedDays = [];
-      for (int i = 0; i < _days.length; i++) {
-        if (_selectedDays[i]) {
-          selectedDays.add(_days[i]);
-        }
-      }
+      final prefs = await SharedPreferences.getInstance();
+      String timezone = prefs.getString("timezone") ?? "Asia/Kolkata";
 
-      if (selectedDays.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please select at least one day")),
-        );
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
+      final Map<String, dynamic> payload = {
+        "device_id": DeviceInformations.selectedDeviceId,
+        "name": scheduleController.text.isEmpty
+            ? "New schedule"
+            : scheduleController.text,
+        "schedule_type": "schedule",
+        "tag": _selectedMode.toUpperCase(),
+        "mode": _getModeValue(_selectedMode),
+        "start_time": formatTime24(_turnOnTime),
+        "end_time": formatTime24(_turnOffTime),
+        "temperature": _targetWaterTemp.toInt(),
+        "timezone": timezone,
+        "days": selectedDays,
+        "is_enabled": _isScheduleActive,
+        "sort_order": 1,
+      };
 
-      Map<String, List<ScheduleTime>> scheduleMap = {};
-      for (String day in selectedDays) {
-        scheduleMap[day] = [
-          ScheduleTime(
-            start: formatTime(_turnOnTime),
-            end: formatTime(_turnOffTime),
-          ),
-        ];
-      }
-      String device_id = DeviceInformations.selectedDeviceId;
-
-      await setSchedule(
-        deviceId: device_id,
-        temperature: _targetWaterTemp.toInt(),
-        timezone: "Australia/Sydney",
-        schedule: scheduleMap,
-      );
+      await setSchedule(payload);
     } catch (e) {
-      print(e);
+      print("Error creating schedule: $e");
     } finally {
       if (mounted) {
         setState(() {
@@ -170,14 +188,21 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
     }
   }
 
-  String formatTime(TimeOfDay time) {
+  String formatTime24(TimeOfDay time) {
     final hour = time.hour.toString().padLeft(2, '0');
     final minute = time.minute.toString().padLeft(2, '0');
     return "$hour:$minute";
   }
 
+  String formatTime12(TimeOfDay time) {
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final period = time.period == DayPeriod.am ? "AM" : "PM";
+    final minute = time.minute.toString().padLeft(2, '0');
+    return "${hour.toString().padLeft(2, '0')}:$minute$period";
+  }
+
   Future<void> _selectTime(BuildContext context, bool isTurnOn) async {
-    if (_isLoading) return; // Prevent picking time while saving
+    if (_isLoading) return;
 
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -188,7 +213,7 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
             colorScheme: ColorScheme.dark(
               primary: accentBlue,
               onPrimary: Colors.white,
-              surface: cardColor,
+              surface: innerCardBg,
               onSurface: Colors.white,
             ),
           ),
@@ -212,26 +237,37 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+        leadingWidth: 56,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: Container(
+            decoration: BoxDecoration(color: cardBg, shape: BoxShape.circle),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
+              onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+            ),
+          ),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               "Schedule",
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontSize: 18,
               ),
             ),
             Text(
               "Heat your water on autopilot",
-              style: TextStyle(color: Colors.grey, fontSize: 11),
+              style: TextStyle(color: subTextColor, fontSize: 11),
             ),
           ],
         ),
@@ -239,48 +275,68 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14.0,
+              vertical: 8.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "NEW SCHEDULE",
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
+                // Modal Card Container
                 Container(
-                  padding: const EdgeInsets.all(16.0),
                   decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(16.0),
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(20.0),
+                    border: Border.all(color: Colors.white.withOpacity(0.05)),
                   ),
+                  padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        "New schedule",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "NEW SCHEDULE",
+                            style: TextStyle(
+                              color: accentBlue,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).pop(),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white70,
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      buildField(
+                        controller: scheduleController,
+                        hint: "Enter schedule",
+                        icon: Icons.schedule,
                       ),
                       const SizedBox(height: 16),
+
+                      // Turn ON / OFF Cards
                       Row(
                         children: [
                           Expanded(
                             child: GestureDetector(
                               onTap: () => _selectTime(context, true),
                               child: Container(
-                                padding: const EdgeInsets.all(16.0),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12.0,
+                                  vertical: 14.0,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: bgColor,
-                                  borderRadius: BorderRadius.circular(12.0),
+                                  color: innerCardBg,
+                                  borderRadius: BorderRadius.circular(14.0),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,41 +346,56 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                                         Icon(
                                           Icons.power_settings_new,
                                           color: accentBlue,
-                                          size: 16,
+                                          size: 12,
                                         ),
-                                        const SizedBox(width: 8),
-                                        const Text(
+                                        const SizedBox(width: 4),
+                                        Text(
                                           "TURN ON",
                                           style: TextStyle(
-                                            color: Colors.grey,
-                                            fontSize: 10,
+                                            color: subTextColor,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ],
                                     ),
                                     const SizedBox(height: 8),
-                                    Text(
-                                      _turnOnTime.format(context),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          formatTime12(_turnOnTime),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const Icon(
+                                          Icons.access_time,
+                                          color: Colors.white70,
+                                          size: 16,
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: GestureDetector(
                               onTap: () => _selectTime(context, false),
                               child: Container(
-                                padding: const EdgeInsets.all(16.0),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12.0,
+                                  vertical: 14.0,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: bgColor,
-                                  borderRadius: BorderRadius.circular(12.0),
+                                  color: innerCardBg,
+                                  borderRadius: BorderRadius.circular(14.0),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,26 +405,38 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                                         Icon(
                                           Icons.power_settings_new,
                                           color: accentBlue,
-                                          size: 16,
+                                          size: 12,
                                         ),
-                                        const SizedBox(width: 8),
-                                        const Text(
+                                        const SizedBox(width: 4),
+                                        Text(
                                           "TURN OFF",
                                           style: TextStyle(
-                                            color: Colors.grey,
-                                            fontSize: 10,
+                                            color: subTextColor,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ],
                                     ),
                                     const SizedBox(height: 8),
-                                    Text(
-                                      _turnOffTime.format(context),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          formatTime12(_turnOffTime),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const Icon(
+                                          Icons.access_time,
+                                          color: Colors.white70,
+                                          size: 16,
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -362,34 +445,42 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 20),
+
+                      // Temperature Slider
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             "TARGET WATER TEMP",
                             style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 10,
+                              color: subTextColor,
+                              fontSize: 9,
                               fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
                             ),
                           ),
                           Text(
                             "${_targetWaterTemp.toInt()}°C",
                             style: TextStyle(
                               color: accentBlue,
-                              fontSize: 18,
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 4),
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
+                          trackHeight: 3,
                           activeTrackColor: accentBlue,
-                          inactiveTrackColor: Colors.grey,
+                          inactiveTrackColor: Colors.white12,
                           thumbColor: accentBlue,
-                          overlayColor: accentBlue.withOpacity(0.3),
+                          overlayColor: accentBlue.withOpacity(0.2),
+                          thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 8,
+                          ),
                         ),
                         child: Slider(
                           value: _targetWaterTemp,
@@ -404,22 +495,22 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                                 },
                         ),
                       ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.0),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               "30°",
                               style: TextStyle(
-                                color: Colors.grey,
+                                color: subTextColor,
                                 fontSize: 10,
                               ),
                             ),
                             Text(
                               "75°",
                               style: TextStyle(
-                                color: Colors.grey,
+                                color: subTextColor,
                                 fontSize: 10,
                               ),
                             ),
@@ -429,22 +520,26 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text(
+
+                const SizedBox(height: 18),
+                Text(
                   "HEATING MODE",
                   style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 10,
+                    color: subTextColor,
+                    fontSize: 9,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.6,
                   ),
                 ),
                 const SizedBox(height: 8),
+
+                // Heating Modes with Dynamic Mode Colors
                 Row(
                   children: ['Eco', 'Boost', 'Comfort'].map((mode) {
                     final isSelected = _selectedMode == mode;
-                    final accentColor = modeColors[mode]!;
-                    final gradient = modeGradients[mode]!;
+                    final activeColor = modeColors[mode]!;
+                    final selectedBg = modeSelectedBgs[mode]!;
+
                     return Expanded(
                       child: GestureDetector(
                         onTap: _isLoading
@@ -454,34 +549,14 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                           margin: const EdgeInsets.only(right: 8),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           decoration: BoxDecoration(
-                            gradient: isSelected
-                                ? LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: gradient,
-                            )
-                                : const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFF1E3154),
-                                Color(0xFF162B45),
-                              ],
-                            ),
+                            color: isSelected ? selectedBg : cardBg,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: isSelected ? accentColor : Colors.transparent,
-                              width: 1.5,
+                              color: isSelected
+                                  ? activeColor
+                                  : Colors.transparent,
+                              width: 1.2,
                             ),
-                            boxShadow: isSelected
-                                ? [
-                              BoxShadow(
-                                color: accentColor.withOpacity(0.35),
-                                blurRadius: 10,
-                                spreadRadius: 1,
-                              ),
-                            ]
-                                : [],
                           ),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -492,16 +567,20 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                                     : mode == 'Boost'
                                     ? Icons.bolt_outlined
                                     : Icons.air,
-                                color: isSelected ? accentColor : Colors.white70,
+                                color: isSelected
+                                    ? activeColor
+                                    : activeColor.withOpacity(0.6),
                                 size: 18,
                               ),
                               const SizedBox(height: 6),
                               Text(
                                 mode,
                                 style: TextStyle(
-                                  color: isSelected ? accentColor : Colors.white,
+                                  color: isSelected
+                                      ? activeColor
+                                      : Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                                  fontSize: 12,
                                 ),
                               ),
                             ],
@@ -511,17 +590,20 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                     );
                   }).toList(),
                 ),
-                const SizedBox(height: 16),
-                const Text(
+
+                const SizedBox(height: 18),
+                Text(
                   "REPEAT ON",
                   style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 10,
+                    color: subTextColor,
+                    fontSize: 9,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.6,
                   ),
                 ),
                 const SizedBox(height: 8),
+
+                // Days Selection Row
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -535,21 +617,21 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                                     !_selectedDays[index],
                               ),
                         child: Container(
-                          margin: const EdgeInsets.only(right: 8.0),
+                          margin: const EdgeInsets.only(right: 6.0),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0,
-                            vertical: 12.0,
+                            horizontal: 14.0,
+                            vertical: 10.0,
                           ),
                           decoration: BoxDecoration(
-                            color: isSelected ? accentBlue : cardColor,
-                            borderRadius: BorderRadius.circular(12.0),
+                            color: isSelected ? accentBlue : cardBg,
+                            borderRadius: BorderRadius.circular(10.0),
                           ),
                           child: Text(
                             _days[index],
                             style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.grey,
+                              color: isSelected ? Colors.black : subTextColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                              fontSize: 11,
                             ),
                           ),
                         ),
@@ -557,20 +639,55 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                     }),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
+
+                // Days Quick Selection Presets
+                Row(
+                  children: ['Weekdays', 'Weekends', 'Daily'].map((preset) {
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: _isLoading
+                            ? null
+                            : () => _selectPresetDays(preset),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Center(
+                            child: Text(
+                              preset,
+                              style: TextStyle(
+                                color: subTextColor,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Switch Active Row
                 Container(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(14.0),
                   decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(16.0),
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(14.0),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          const Text(
                             "Schedule active",
                             style: TextStyle(
                               color: Colors.white,
@@ -578,17 +695,18 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           Text(
                             "Aether will run this automatically",
-                            style: TextStyle(color: Colors.grey, fontSize: 10),
+                            style: TextStyle(color: subTextColor, fontSize: 10),
                           ),
                         ],
                       ),
                       Switch(
                         value: _isScheduleActive,
-                        activeColor: accentBlue,
-                        inactiveTrackColor: Colors.grey,
+                        activeColor: Colors.white,
+                        activeTrackColor: accentBlue,
+                        inactiveTrackColor: Colors.grey.withOpacity(0.3),
                         onChanged: _isLoading
                             ? null
                             : (value) {
@@ -600,22 +718,27 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 32),
+
+                const SizedBox(height: 24),
+
+                // Save Action Button
                 SizedBox(
                   width: double.infinity,
-                  height: 50,
+                  height: 48,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _createSchedule,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: accentBlue,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16.0),
+                        borderRadius: BorderRadius.circular(12.0),
                       ),
+                      elevation: 4,
+                      shadowColor: accentBlue.withOpacity(0.5),
                     ),
                     child: const Text(
                       "Create Schedule",
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Colors.black,
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
@@ -627,11 +750,10 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
             ),
           ),
 
-          /// ⏳ Centered Full-Screen Dimming Loader Overlay
           if (_isLoading)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.5), // Subtle dimming effect
+                color: Colors.black.withOpacity(0.5),
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -639,27 +761,16 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                       vertical: 24,
                     ),
                     decoration: BoxDecoration(
-                      color: cardColor,
+                      color: cardBg,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: accentBlue.withOpacity(0.3)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.6),
-                          blurRadius: 25,
-                          spreadRadius: 3,
-                        ),
-                      ],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(
-                          width: 35,
-                          height: 35,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 3,
-                            color: accentBlue,
-                          ),
+                        CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: accentBlue,
                         ),
                         const SizedBox(height: 18),
                         const Text(
@@ -668,13 +779,7 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
                             color: Colors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          "Sending rules to hardware",
-                          style: TextStyle(color: Colors.grey, fontSize: 11),
                         ),
                       ],
                     ),
@@ -683,6 +788,32 @@ class _ScheduleScreenState extends State<CreateScheduleScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget buildField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    bool isPassword = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon, color: accentBlue),
+          hintText: hint,
+          hintStyle: const TextStyle(color: Colors.blueAccent),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 18),
+        ),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:untitled/DeviceInformations.dart';
@@ -48,6 +49,15 @@ class _ProfileScreenState extends State<NewProfileScreen> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: const Color(0xFF0C101B),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.black,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+    );
     _fetchProfile();
     getFamilyMembers();
     getdeviceDetails();
@@ -441,7 +451,15 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                       ? _buildInstallerAndSupport()
                       : _buildNoInstallerCard(),
                   const SizedBox(height: 15),
-
+                  const Text(
+                    "PREFERENCES",
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       Expanded(
@@ -456,16 +474,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                "PREFERENCES",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 6),
                               Row(
                                 children: [
                                   Container(

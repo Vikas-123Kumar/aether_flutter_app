@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sleek_circular_slider/sleek_circular_slider.dart';
@@ -81,8 +82,17 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   @override
   void initState() {
     super.initState();
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: const Color(0xFF0C101B),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.black,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+    );
     loadUserDeviceList();
-    _deviceDataTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
+    _deviceDataTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       getDeviceData();
     });
     getWeatherForecast();
@@ -215,24 +225,22 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     Duration timeout = const Duration(seconds: 20),
   }) async {
     if (_isWaitingForUpdate) return false;
+
     _isWaitingForUpdate = true;
-
     final endTime = DateTime.now().add(timeout);
-    print("after loader yes");
+
     while (DateTime.now().isBefore(endTime)) {
-      // 🟢 CHANGED: Wait 5 seconds before making the next API status check
-      await Future.delayed(const Duration(seconds: 6));
-
-      // Check if we ran out of time while waiting
-      if (DateTime.now().isAfter(endTime)) break;
-
       await getDeviceData();
+
       final item = deviceData.where((e) => e.itemid == itemId);
 
       if (item.isNotEmpty && item.first.val == expectedValue) {
         _isWaitingForUpdate = false;
         return true;
       }
+
+      // Check every 2 seconds
+      await Future.delayed(const Duration(seconds: 2));
     }
 
     _isWaitingForUpdate = false;

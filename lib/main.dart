@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:untitled/services/PushNotificationService.dart';
 import 'package:untitled/splash/SplashScreen.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +15,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-
   // 2. This will now look for the global function above and work perfectly
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:untitled/authentication/InstallerLogin.dart';
 import 'dart:convert';
@@ -25,6 +26,20 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         MaterialPageRoute(builder: (context) => NewLoginScreen()),
       );
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: const Color(0xFF0C101B),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.black,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+    );
   }
 
   @override
