@@ -18,6 +18,8 @@ class _WeatherForecastScreen extends State<WeatherForecastScreen> {
   String error = "";
   String location = "";
   String timezone = "";
+  final Color cardBg = const Color(0xFF0F1726);
+  bool _isLoading = false;
   @override
   void initState() {
     super.initState();
@@ -81,6 +83,16 @@ class _WeatherForecastScreen extends State<WeatherForecastScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: Container(
+            decoration: BoxDecoration(color: cardBg, shape: BoxShape.circle),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
+              onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+            ),
+          ),
+        ),
         title: const Text(
           "Weather Forecast",
           style: TextStyle(

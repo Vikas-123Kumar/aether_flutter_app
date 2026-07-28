@@ -92,6 +92,7 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
 
   Future<void> getDeviceData() async {
     try {
+
       device_name = DeviceInformations.selectedDeviceName!;
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";

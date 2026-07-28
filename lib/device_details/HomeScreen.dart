@@ -1,21 +1,13 @@
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:untitled/NotificationScreen.dart';
-import 'package:untitled/WeatherForecastScreen.dart';
-import 'package:untitled/scheduletimer/ScheduleScreen.dart';
+
 import 'package:untitled/authentication/NewProfileScreen.dart';
+import 'package:untitled/erroralert/AlertsScreen.dart';
+import 'package:untitled/installer/InstallerList.dart';
+import 'package:untitled/installer/InstallerProfile.dart';
+import 'package:untitled/scheduletimer/NewScheduleScreen.dart';
 
-import '../authentication/NewLoginScreen.dart';
-import '../authentication/model/ProfileInfo.dart';
-import '../authentication/rest/APIService.dart';
-
-import '../erroralert/AlertsScreen.dart';
-import '../installer/InstallerList.dart';
-import '../installer/InstallerProfile.dart';
-import '../scheduletimer/NewScheduleScreen.dart';
 import 'NewDeviceControlScreen.dart';
-
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -28,6 +20,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
   String roleType = "end_user";
 
+  @override
+  void initState() {
+    super.initState();
+    loadRole();
+  }
 
   Future<void> loadRole() async {
     final prefs = await SharedPreferences.getInstance();
@@ -36,363 +33,128 @@ class _DashboardScreenState extends State<DashboardScreen> {
       roleType = prefs.getString("current_role") ?? "Installer";
     });
   }
+
   List<Widget> getPages() {
     if (roleType == "Installer") {
       return [
-        Installerlist(),
-        Installerprofile(),
+        const Installerlist(),
+        const Installerprofile(),
       ];
     }
 
     return [
-      NewDeviceControlScreen(),
-      ScheduleDashboardScreen(),
-      AlertsScreen(),
-      NewProfileScreen(),
+       NewDeviceControlScreen(),
+      const ScheduleDashboardScreen(),
+       AlertsScreen(),
+      const NewProfileScreen(),
     ];
   }
 
-  List<BottomNavigationBarItem> getBottomItems() {
-    if (roleType == "Installer") {
-      return const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          label: "Home",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          label: "Profile",
-        ),
-      ];
-    }
-
-    return const [
-      BottomNavigationBarItem(
-        icon: Icon(Icons.home_outlined),
-        label: 'Home',
-      ),
-      BottomNavigationBarItem(
-        icon: Icon(Icons.calendar_month_outlined),
-        label: 'Schedule',
-      ),
-      BottomNavigationBarItem(
-        icon: Icon(Icons.notifications_none),
-        label: 'Error',
-      ),
-      BottomNavigationBarItem(
-        icon: Icon(Icons.person),
-        label: 'Me',
-      ),
-    ];
-  }
-  @override
-  void initState() {
-    super.initState();
-    loadRole();
-  }
   @override
   Widget build(BuildContext context) {
     final pages = getPages();
 
     return Scaffold(
+      backgroundColor: const Color(0xFF0A0F1F),
+
       body: SafeArea(
         child: pages[_currentIndex],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
+
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 6,
+            vertical: 6,
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFF15233F),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.35),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: roleType == "Installer"
+                ? [
+              _navItem(Icons.home_rounded, "Home", 0),
+              _navItem(Icons.person_outline, "Profile", 1),
+            ]
+                : [
+              _navItem(Icons.home_rounded, "Home", 0),
+              _navItem(Icons.calendar_month_rounded, "Schedule", 1),
+              _navItem(Icons.notifications_none_rounded, "Alerts", 2),
+              _navItem(Icons.person_outline, "Profile", 3),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem(
+      IconData icon,
+      String title,
+      int index,
+      ) {
+    bool selected = _currentIndex == index;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
           setState(() {
             _currentIndex = index;
           });
         },
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.white54,
-        backgroundColor: Colors.black,
-        type: BottomNavigationBarType.fixed,
-        items: getBottomItems(),
-      ),
-    );
-  }
-}
-
-class DashboardPage extends StatelessWidget {
-  const DashboardPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("Dashboard"));
-  }
-}
-
-class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("Settings"));
-  }
-}
-
-class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
-
-  @override
-  State<ProfilePage> createState() => _ProfilePageState();
-}
-
-class _ProfilePageState extends State<ProfilePage> {
-  String name = "";
-  String email = "";
-  String userId = "";
-  String firstLetter = "";
-
-  @override
-  void initState() {
-    super.initState();
-    loadProfile(); // 🔥 CALL HERE
-  }
-
-  // 🔹 Load Profile
-  void loadProfile() async {
-    final profile = await getProfileInfo();
-
-    if (profile != null) {
-      final data = profile.data;
-
-      setState(() {
-        name = data.name;
-        email = data.email;
-        userId = data.id.toString();
-        firstLetter = data.name.isNotEmpty
-            ? data.name.substring(0, 1).toUpperCase()
-            : "";
-      });
-    }
-  }
-
-  // 🔹 API Call
-  Future<ProfileInfo?> getProfileInfo() async {
-    final api = ApiService();
-
-    try {
-      final response = await api.get("profile");
-
-      if (response.statusCode == 200) {
-        return ProfileInfo.fromJson(response.data);
-      } else {
-        return null;
-      }
-    } catch (e) {
-      print("Exception: $e");
-      return null;
-    }
-  }
-
-  // 🔹 Logout
-  Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove("token");
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => NewLoginScreen()),
-      (route) => false,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF051139),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 100), // 👈 FIX
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "Personal Information",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    // FIXED: blur_on (lowercase 'b')
-                    Image.asset("assets/aether_logo.png", height: 40),
-                  ],
-                ),
-                const SizedBox(height: 30),
-
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0A1D4D).withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            height: 60,
-                            width: 50,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF64B5F6), Color(0xFF9575CD)],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Center(
-                              child: Text(
-                                firstLetter,
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            // FIXED: Added Expanded to prevent overflow
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  name,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  email,
-                                  style: TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 13,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 30),
-                      _buildInfoTile("User ID", userId, Icons.person_outline),
-                      SizedBox(height: 15),
-                      _buildInfoTile("Device ID", "", Icons.lock_outline),
-                      SizedBox(height: 15),
-                      _buildInfoTile(
-                        "Email Address",
-                        email,
-                        Icons.email_outlined,
-                      ),
-                      const SizedBox(height: 30),
-                      const Divider(color: Colors.white12),
-                      const SizedBox(height: 20),
-                      _buildButton("Sign Out", context, "logout"),
-                      const SizedBox(height: 15),
-                      _buildButton("Remove Device", context, "device"),
-                      const SizedBox(height: 15),
-                      _buildButton("Setup Wi-Fi", context, "wifi_setup"),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          decoration: BoxDecoration(
+            color: selected
+                ? const Color(0xFF2DAEFF).withOpacity(.18)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoTile(String label, String value, IconData icon) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D1B3E),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white38, fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: Colors.blueAccent, size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  value,
-                  style: const TextStyle(color: Colors.white70),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? const Color(0xFF2DAEFF).withOpacity(.15)
+                      : Colors.transparent,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: selected
+                      ? const Color(0xFF3BC2FF)
+                      : Colors.white54,
+                  size: 21,
+                ),
+              ),
+
+              const SizedBox(height: 4),
+              Text(
+                title,
+                style: TextStyle(
+                  color: selected
+                      ? const Color(0xFF3BC2FF)
+                      : Colors.white54,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildButton(String label, BuildContext context, String clicktype) {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: OutlinedButton(
-        onPressed: () async {
-          if (clicktype == "logout") {
-            bool? confirm = await showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: Text("Logout"),
-                content: Text("Are you sure?"),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: Text("No"),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: Text("Yes"),
-                  ),
-                ],
-              ),
-            );
-
-            if (confirm == true) {
-              logout();
-            }
-          } else if (clicktype == "device") {
-          }
-        },
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Colors.white24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
           ),
         ),
       ),

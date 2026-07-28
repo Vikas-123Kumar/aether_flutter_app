@@ -17,7 +17,7 @@ class CreateScheduleScreen extends StatefulWidget {
 class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
   TimeOfDay _turnOnTime = const TimeOfDay(hour: 7, minute: 0);
   TimeOfDay _turnOffTime = const TimeOfDay(hour: 8, minute: 0);
-  double _targetWaterTemp = 30.0;
+  double _targetWaterTemp = 35.0;
   String _selectedMode = 'Eco';
   final List<String> _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   final List<bool> _selectedDays = List.filled(7, false);
@@ -484,7 +484,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
                         ),
                         child: Slider(
                           value: _targetWaterTemp,
-                          min: 30.0,
+                          min: 35.0,
                           max: 75.0,
                           onChanged: _isLoading
                               ? null
@@ -501,7 +501,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              "30°",
+                              "35°",
                               style: TextStyle(
                                 color: subTextColor,
                                 fontSize: 10,
@@ -674,52 +674,52 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
 
                 const SizedBox(height: 20),
 
-                // Switch Active Row
-                Container(
-                  padding: const EdgeInsets.all(14.0),
-                  decoration: BoxDecoration(
-                    color: cardBg,
-                    borderRadius: BorderRadius.circular(14.0),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Schedule active",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            "Aether will run this automatically",
-                            style: TextStyle(color: subTextColor, fontSize: 10),
-                          ),
-                        ],
-                      ),
-                      Switch(
-                        value: _isScheduleActive,
-                        activeColor: Colors.white,
-                        activeTrackColor: accentBlue,
-                        inactiveTrackColor: Colors.grey.withOpacity(0.3),
-                        onChanged: _isLoading
-                            ? null
-                            : (value) {
-                                setState(() {
-                                  _isScheduleActive = value;
-                                });
-                              },
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
+                // // Switch Active Row
+                // Container(
+                //   padding: const EdgeInsets.all(14.0),
+                //   decoration: BoxDecoration(
+                //     color: cardBg,
+                //     borderRadius: BorderRadius.circular(14.0),
+                //   ),
+                //   child: Row(
+                //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                //     children: [
+                //       Column(
+                //         crossAxisAlignment: CrossAxisAlignment.start,
+                //         children: [
+                //           const Text(
+                //             "Schedule active",
+                //             style: TextStyle(
+                //               color: Colors.white,
+                //               fontSize: 13,
+                //               fontWeight: FontWeight.bold,
+                //             ),
+                //           ),
+                //           const SizedBox(height: 2),
+                //           Text(
+                //             "Aether will run this automatically",
+                //             style: TextStyle(color: subTextColor, fontSize: 10),
+                //           ),
+                //         ],
+                //       ),
+                //       Switch(
+                //         value: _isScheduleActive,
+                //         activeColor: Colors.white,
+                //         activeTrackColor: accentBlue,
+                //         inactiveTrackColor: Colors.grey.withOpacity(0.3),
+                //         onChanged: _isLoading
+                //             ? null
+                //             : (value) {
+                //                 setState(() {
+                //                   _isScheduleActive = value;
+                //                 });
+                //               },
+                //       ),
+                //     ],
+                //   ),
+                // ),
+                //
+                // const SizedBox(height: 24),
 
                 // Save Action Button
                 SizedBox(

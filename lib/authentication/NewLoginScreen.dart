@@ -62,7 +62,7 @@ class _LoginScreenState extends State<NewLoginScreen> {
         String token = data["token"];
         int userId = data["user"]["id"];
         String timezone = data["user"]["timezone"];
-
+        String company_name = data["user"]["company_name"] ?? "";
         ApiService().setToken(token);
 
         final prefs = await SharedPreferences.getInstance();
@@ -70,10 +70,10 @@ class _LoginScreenState extends State<NewLoginScreen> {
         await prefs.setString("token", token);
         await prefs.setInt("user_id", userId);
         await prefs.setString("timezone", timezone);
+        await prefs.setString("company_name", company_name);
         await prefs.setString("current_role", data["current_role"]);
         String role = data["current_role"];
         print("User ID: $userId  $role");
-
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => DashboardScreen()),

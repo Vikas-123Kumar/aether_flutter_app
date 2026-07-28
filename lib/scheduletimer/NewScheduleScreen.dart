@@ -770,46 +770,46 @@ class _ScheduleDashboardScreenState extends State<ScheduleDashboardScreen> {
                                   ),
                                   onChanged: (val) async {
                                     // Update UI immediately
-                                    setState(() {
-                                      item.isActive = val;
-                                    });
-
-                                    // Make API Call
-                                    bool success =
-                                        await ApiService1.toggleScheduleStatus(
-                                          item.id,
-                                          val,
-                                        );
-
-                                    if (success) {
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              "Schedule updated successfully.",
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    } else {
-                                      // Revert UI if API fails
-                                      setState(() {
-                                        item.isActive = !val;
-                                      });
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              "Failed to update schedule",
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    }
+                                    // setState(() {
+                                    //   item.isActive = val;
+                                    // });
+                                    //
+                                    // // Make API Call
+                                    // bool success =
+                                    //     await ApiService1.toggleScheduleStatus(
+                                    //       item.id,
+                                    //       val,
+                                    //     );
+                                    //
+                                    // if (success) {
+                                    //   if (mounted) {
+                                    //     ScaffoldMessenger.of(
+                                    //       context,
+                                    //     ).showSnackBar(
+                                    //       const SnackBar(
+                                    //         content: Text(
+                                    //           "Schedule updated successfully.",
+                                    //         ),
+                                    //       ),
+                                    //     );
+                                    //   }
+                                    // } else {
+                                    //   // Revert UI if API fails
+                                    //   setState(() {
+                                    //     item.isActive = !val;
+                                    //   });
+                                    //   if (mounted) {
+                                    //     ScaffoldMessenger.of(
+                                    //       context,
+                                    //     ).showSnackBar(
+                                    //       const SnackBar(
+                                    //         content: Text(
+                                    //           "Failed to update schedule",
+                                    //         ),
+                                    //       ),
+                                    //     );
+                                    //   }
+                                    // }
                                   },
                                 ),
                               ],

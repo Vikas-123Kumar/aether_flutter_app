@@ -40,6 +40,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   bool isPlusPressed = false;
   bool _isFetching = false;
   bool _isWaitingForUpdate = false;
+  Timer? _temperatureDebounce;
 
   // New Global Controls for API Triggers
   bool _isProcessing = false;
@@ -48,6 +49,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   String error = "";
   String location = "";
   String timezone = "";
+  bool change_target = false;
 
   // Design Colors
   final Color bgColorStart = const Color(0xFF0F1725);
@@ -92,7 +94,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       ),
     );
     loadUserDeviceList();
-    _deviceDataTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    _deviceDataTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       getDeviceData();
     });
     getWeatherForecast();
@@ -110,6 +112,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   void dispose() {
     _deviceDataTimer?.cancel();
     _cooldownTimer?.cancel();
+    _temperatureDebounce?.cancel();
     super.dispose();
   }
 
@@ -166,7 +169,9 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
             selectedMode = "Boost";
           }
           currentTemp = setPointData.val;
-          targetTemp = int.parse(setPointData.val);
+          if (!change_target) {
+            targetTemp = int.parse(setPointData.val);
+          }
           unit = setPointData.unit;
           isPowerOn = setPointDataPower.val == "1";
           isLoading = false;
@@ -213,7 +218,6 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     } catch (e) {
       setState(() {
         error = e.toString();
-
         isLoading = false;
       });
     }
@@ -231,18 +235,14 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
     while (DateTime.now().isBefore(endTime)) {
       await getDeviceData();
-
       final item = deviceData.where((e) => e.itemid == itemId);
-
       if (item.isNotEmpty && item.first.val == expectedValue) {
         _isWaitingForUpdate = false;
         return true;
       }
-
       // Check every 2 seconds
-      await Future.delayed(const Duration(seconds: 2));
+      await Future.delayed(const Duration(seconds: 3));
     }
-
     _isWaitingForUpdate = false;
     return false;
   }
@@ -344,6 +344,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         }),
       );
       if (response.statusCode == 200) {
+        change_target = false;
         await waitForDeviceUpdate(itemId: "2", expectedValue: api_mode);
       }
     } catch (e) {
@@ -382,6 +383,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       );
 
       if (response.statusCode == 200) {
+        change_target = false;
         await waitForDeviceUpdate(
           itemId: "1",
           expectedValue: apiMode.toString(),
@@ -398,6 +400,22 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     }
   }
 
+  void onTemperatureChanged(int value) {
+    change_target = true;
+    // Update UI immediately
+    setState(() {
+      targetTemp = value;
+    });
+
+    // Cancel previous timer
+    _temperatureDebounce?.cancel();
+
+    // Wait 500ms after last click
+    _temperatureDebounce = Timer(const Duration(milliseconds: 800), () {
+      updateTemperature(value);
+    });
+  }
+
   Future<void> updateTemperature(int value) async {
     if (!isDeviceActive) {
       ScaffoldMessenger.of(
@@ -405,8 +423,8 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       ).showSnackBar(const SnackBar(content: Text("Device is offline")));
       return;
     }
-    if (_isProcessing || isUpdatingTemp) return; // Block fast multi-clicks
-    _startCooldown();
+    // if (_isProcessing || isUpdatingTemp) return; // Block fast multi-clicks
+    // _startCooldown();
 
     String device_id = DeviceInformations.act_device_id;
 
@@ -442,10 +460,11 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
             SnackBar(content: Text(apiMsg), backgroundColor: Colors.red),
           );
         } else {
-          await waitForDeviceUpdate(
-            itemId: "3",
-            expectedValue: value.toString(),
-          );
+          // await waitForDeviceUpdate(
+          //   itemId: "3",
+          //   expectedValue: value.toString(),
+          // );
+          //getDeviceData();
         }
       }
     } catch (e) {
@@ -672,7 +691,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                       selectedButton = 'minus';
                                     });
                                     if (targetTemp > 35) {
-                                      updateTemperature(targetTemp - 1);
+                                      onTemperatureChanged(targetTemp - 1);
                                     }
                                   },
                             child: AnimatedContainer(
@@ -781,7 +800,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                       selectedButton = 'plus';
                                     });
                                     if (targetTemp < 75) {
-                                      updateTemperature(targetTemp + 1);
+                                      onTemperatureChanged(targetTemp + 1);
                                     }
                                   },
                             child: AnimatedContainer(
