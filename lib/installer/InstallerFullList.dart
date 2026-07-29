@@ -15,14 +15,14 @@ import '../authentication/model/Device.dart';
 import '../authentication/model/DeviceDataModel.dart';
 import '../authentication/rest/APIService.dart';
 
-class Installerlist extends StatefulWidget {
-  const Installerlist({super.key});
+class InstallerFulllist extends StatefulWidget {
+  const InstallerFulllist({super.key});
 
   @override
-  State<Installerlist> createState() => _DashboardScreenState();
+  State<InstallerFulllist> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<Installerlist> {
+class _DashboardScreenState extends State<InstallerFulllist> {
   final ApiService apiService = ApiService();
   String currentTemp = "0";
   String unit = "";
@@ -35,6 +35,8 @@ class _DashboardScreenState extends State<Installerlist> {
   List<DeviceDataModel> deviceData = [];
   bool isDeviceActive = false;
   String device_name = "", company_name = "";
+
+  // --- LISTS FOR SEARCH LOGIC ---
   List devices = [];
   List filteredDevices = []; // Holds the filtered list for the UI
 
@@ -50,8 +52,8 @@ class _DashboardScreenState extends State<Installerlist> {
       print("user id: " + user_id.toString());
       company_name =
           prefs.getString("company_name") ??
-          prefs.getString("installer_company") ??
-          "";
+              prefs.getString("installer_company") ??
+              "";
       if (!connected) {
         ScaffoldMessenger.of(
           context,
@@ -65,7 +67,7 @@ class _DashboardScreenState extends State<Installerlist> {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => NewLoginScreen()),
-          (route) => false,
+              (route) => false,
         );
         return;
       }
@@ -117,13 +119,13 @@ class _DashboardScreenState extends State<Installerlist> {
               .map((e) => DeviceDataModel.fromJson(e))
               .toList();
           final setPointData = deviceData.firstWhere(
-            (item) => item.itemid == "3",
+                (item) => item.itemid == "3",
           );
           final setPointDataMode = deviceData.firstWhere(
-            (item) => item.itemid == "2",
+                (item) => item.itemid == "2",
           );
           final setPointDataPower = deviceData.firstWhere(
-            (item) => item.itemid == "1",
+                (item) => item.itemid == "1",
           );
           print(" data points${setPointData.val}${setPointData.unit}");
           if (setPointDataMode.val == "0") {
@@ -167,8 +169,7 @@ class _DashboardScreenState extends State<Installerlist> {
         // Safely extract fields to search against and convert them to lowercase
         final customerName = customer?["name"]?.toString().toLowerCase() ?? "";
         final address = customer?["address"]?.toString().toLowerCase() ?? "";
-        final serialNumber =
-            device["serial_number"]?.toString().toLowerCase() ?? "";
+        final serialNumber = device["serial_number"]?.toString().toLowerCase() ?? "";
         final deviceName = device["name"]?.toString().toLowerCase() ?? "";
 
         final query = enteredKeyword.toLowerCase();
@@ -190,7 +191,6 @@ class _DashboardScreenState extends State<Installerlist> {
   @override
   void initState() {
     super.initState();
-
     loadUserDeviceList();
   }
 
@@ -212,14 +212,8 @@ class _DashboardScreenState extends State<Installerlist> {
                   children: [
                     _headerCard(),
                     const SizedBox(height: 24),
-                    _statsRow(),
-                    const SizedBox(height: 24),
-                    _linkDeviceCard(context),
-                    const SizedBox(height: 24),
                     _searchBar(),
                     const SizedBox(height: 24),
-                    _installationsHeader(),
-                    const SizedBox(height: 12),
                     _buildDeviceList(),
                   ],
                 ),
@@ -256,18 +250,18 @@ class _DashboardScreenState extends State<Installerlist> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "INSTALLER",
+              const Text(
+                "Installations",
                 style: TextStyle(
                   color: Color(0xFF8A94A6),
                   fontSize: 10,
                   letterSpacing: 1.2,
                 ),
               ),
-              SizedBox(height: 2),
+              const SizedBox(height: 2),
               Text(
-                company_name.isNotEmpty ? company_name : "",
-                style: TextStyle(
+                devices.isNotEmpty ? "${devices.length} Systems" : "",
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -317,167 +311,6 @@ class _DashboardScreenState extends State<Installerlist> {
     );
   }
 
-  // ---------------- STATS ----------------
-  Widget _statsRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: _statCard(
-            title: "SYSTEMS",
-            icon: Icons.show_chart,
-            value: totalDevices,
-            subtitle: "$onlineDevices online",
-            subtitleColor: const Color(0xFF38A169),
-            // Green
-            iconColor: const Color(0xFF4299E1),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _statCard(
-            title: "OPEN ALERTS",
-            icon: Icons.notifications_none,
-            value: 0,
-            // Static fallback for UI parity
-            subtitle: "0 need attention",
-            subtitleColor: const Color(0xFFD69E2E),
-            // Yellow/Orange
-            iconColor: const Color(0xFFD69E2E),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _statCard({
-    required String title,
-    required IconData icon,
-    required int value,
-    required String subtitle,
-    required Color subtitleColor,
-    required Color iconColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: iconColor, size: 16),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Color(0xFF8A94A6),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            "$value",
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: subtitleColor,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------------- LINK DEVICE ----------------
-  Widget _linkDeviceCard(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ConnectScreen()),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF46B5FF), Color(0xFF3B82F6)],
-            // Bright blue gradient
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF3B82F6).withOpacity(0.3),
-              blurRadius: 20,
-              spreadRadius: 4,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.add_circle_outline,
-                color: Color(0xFF0B111E),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    "Link a new device",
-                    style: TextStyle(
-                      color: Color(0xFF0B111E),
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    "Pair · configure · transfer to customer",
-                    style: TextStyle(
-                      color: Color(0xFF1E293B),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              color: Color(0xFF0B111E),
-              size: 16,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ---------------- SEARCH ----------------
   Widget _searchBar() {
     return TextField(
@@ -499,24 +332,6 @@ class _DashboardScreenState extends State<Installerlist> {
           borderSide: BorderSide.none,
         ),
       ),
-    );
-  }
-
-  // ---------------- HEADER FOR LIST ----------------
-  Widget _installationsHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text(
-          "YOUR INSTALLATIONS",
-          style: TextStyle(
-            color: Color(0xFF8A94A6),
-            fontSize: 12,
-            letterSpacing: 1.0,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
     );
   }
 
@@ -581,17 +396,4 @@ class _DashboardScreenState extends State<Installerlist> {
     );
   }
 
-  BoxDecoration _cardDecoration() {
-    return BoxDecoration(
-      color: const Color(0xFF161F33), // Slightly lighter than scaffold bg
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.2),
-          offset: const Offset(0, 4),
-          blurRadius: 10,
-        ),
-      ],
-    );
-  }
 }

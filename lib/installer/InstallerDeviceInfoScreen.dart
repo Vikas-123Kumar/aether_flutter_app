@@ -1,18 +1,13 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
+// Ensure these imports match your project structure
 import 'package:untitled/CustomerInformation.dart';
 import 'package:untitled/DeviceInformations.dart';
-import 'package:untitled/authentication/model/Device.dart';
-import 'package:untitled/pairdevice/ConnectScreen.dart';
-
-import '../authentication/NewLoginScreen.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../authentication/model/DeviceDataModel.dart';
-import '../authentication/rest/APIService.dart';
-import '../device_details/ThermostateDial.dart';
-import 'TransferScreen.dart';
 
 class Installerdeviceinfoscreen extends StatefulWidget {
   final String deviceId;
@@ -20,67 +15,40 @@ class Installerdeviceinfoscreen extends StatefulWidget {
   const Installerdeviceinfoscreen({super.key, required this.deviceId});
 
   @override
-  State<Installerdeviceinfoscreen> createState() => _ThermostatUIState();
+  State<Installerdeviceinfoscreen> createState() => _InstallerdeviceinfoscreenState();
 }
 
-class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
+class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
+  // --- STATE VARIABLES ---
   String currentTemp = "0";
-  String unit = "";
+  String unit = "°C";
   int targetTemp = 52;
-  String selectedMode = "";
+  String selectedMode = "Comfort";
+  String runtime="";
   bool isUpdatingTemp = false;
-  String mode = "ECO"; // standard / eco / boost
-  bool isLoading = false;
+  bool isLoading = true;
   bool isPowerOn = false;
   bool isCheckingDevices = false;
   List<DeviceDataModel> deviceData = [];
   bool isDeviceActive = false;
-  String device_name = "";
+  String deviceName = "Loading...";
 
-  Color get activeThemeColor {
-    if (selectedMode == "Eco") {
-      return const Color(0xFF1E6E5B); // Neon Green
-    } else if (selectedMode == "Boost") {
-      return const Color(0xFF6A3C2A); // Bright Orange
-    } else {
-      return const Color(0xFF38B6FF); // Comfort Blue
-    }
-  }
-
-  final Color bgColorStart = const Color(0xFF0F1725);
-  final Color bgColorEnd = const Color(0xFF0A101A);
-  final Color cardColor = const Color(0xFF131F33);
-  final Color accentBlue = const Color(0xFF38B6FF);
+  // --- DESIGN COLORS ---
+  final Color bgDark = const Color(0xFF090D14);
+  final Color cardBorder = const Color(0xFF1E293B);
+  final Color cardBg = const Color(0xFF0F1724);
+  final Color neonBlue = const Color(0xFF38B6FF);
+  final Color neonCyan = const Color(0xFF00F0FF);
   final Color textGrey = const Color(0xFF8B9CB6);
 
-  Color get activeSolidColor {
-    if (selectedMode == "Eco") return const Color(0xFF1E6E5B); // Neon Green
-    if (selectedMode == "Boost") return const Color(0xFFF17637); // Deep Orange
-    return const Color(0xFF215D82); // Comfort Blue
-  }
-
-  // 2. Define the gradient colors for the dial and backgrounds
-  // 2. Define the gradient colors for the dial and backgrounds
-  List<Color> get activeGradientColors {
-    if (selectedMode == "Eco") {
-      // Vivid Green fading into Bright Cyan/Teal
-      return [const Color(0xFF36E2A3), const Color(0xFF377E99)];
-    } else if (selectedMode == "Boost") {
-      // Deep Orange fading into Bright Yellow
-      return [const Color(0xFFD4926C), const Color(0xFF377E99)];
-    } else {
-      // Rich Blue fading into Light Neon Blue
-      return [const Color(0xFF5CD2FF), const Color(0x505CD2FF)];
-    }
-  }
-
-  @override
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    getDeviceData();
+    deviceName = DeviceInformations.selectedDeviceName ?? "Unknown Device";
+    getDeviceData(); // Fetch live data on init
   }
+
+  // --- API METHODS (From your original code) ---
 
   DeviceDataModel? getItem(String alias) {
     try {
@@ -92,8 +60,11 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
 
   Future<void> getDeviceData() async {
     try {
+      setState(() {
+        isLoading = true;
+        deviceName = DeviceInformations.selectedDeviceName ?? "";
+      });
 
-      device_name = DeviceInformations.selectedDeviceName!;
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
       String deviceId = DeviceInformations.act_device_id;
@@ -109,29 +80,22 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
         },
       );
       print(response.body);
+
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-
         final List dataList = decoded['data']['data'];
-        int length = dataList.length;
-        print("list size$length");
+
         setState(() {
           if (DeviceInformations.is_online == "1") {
             isDeviceActive = true;
           }
-          deviceData = dataList
-              .map((e) => DeviceDataModel.fromJson(e))
-              .toList();
-          final setPointData = deviceData.firstWhere(
-            (item) => item.itemid == "3",
-          );
-          final setPointDataMode = deviceData.firstWhere(
-            (item) => item.itemid == "2",
-          );
-          final setPointDataPower = deviceData.firstWhere(
-            (item) => item.itemid == "1",
-          );
-          print(" data points${setPointData.val}${setPointData.unit}");
+          deviceData = dataList.map((e) => DeviceDataModel.fromJson(e)).toList();
+
+          final setPointData = deviceData.firstWhere((item) => item.itemid == "3");
+          final setPointDataMode = deviceData.firstWhere((item) => item.itemid == "2");
+          final setPointDataPower = deviceData.firstWhere((item) => item.itemid == "1");
+          final dc_runtime = deviceData.firstWhere((item) => item.itemid == "25");
+
           if (setPointDataMode.val == "0") {
             selectedMode = "Eco";
           } else if (setPointDataMode.val == "1") {
@@ -139,12 +103,12 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
           } else if (setPointDataMode.val == "2") {
             selectedMode = "Boost";
           }
-          print(" mode points${setPointDataMode.val}   $selectedMode");
 
           currentTemp = setPointData.val;
           targetTemp = int.parse(setPointData.val);
           unit = setPointData.unit;
           isPowerOn = setPointDataPower.val == "1";
+          runtime=dc_runtime.val;
           isLoading = false;
         });
       } else {
@@ -161,19 +125,17 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
   }
 
   Future<void> updateMode(String mode) async {
-    String device_id = DeviceInformations.act_device_id;
+    String deviceId = DeviceInformations.act_device_id;
     final modeItem = getItem("mode");
     if (modeItem == null) return;
-    String api_mode = "0";
+    String apiMode = "0";
     final prefs = await SharedPreferences.getInstance();
     String token = prefs.getString("token") ?? "";
-    if (mode == "ECO") {
-      api_mode = "0";
-    } else if (mode == "Comfort") {
-      api_mode = "1";
-    } else if (mode == "Boost") {
-      api_mode = "2";
-    }
+
+    if (mode == "Eco") apiMode = "0";
+    else if (mode == "Comfort") apiMode = "1";
+    else if (mode == "Boost") apiMode = "2";
+
     final response = await http.put(
       Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
       headers: {
@@ -182,33 +144,27 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
         "Authorization": "Bearer $token",
       },
       body: jsonEncode({
-        "devid": device_id,
+        "devid": deviceId,
         "itemid": "",
-        "value": "mode=$api_mode",
+        "value": "mode=$apiMode",
       }),
     );
 
     if (response.statusCode == 200) {
-      setState(() {
-        selectedMode = mode;
-      });
+      setState(() => selectedMode = mode);
       getDeviceData();
-    } else {
-      setState(() {
-        selectedMode = mode;
-      });
     }
   }
 
   Future<void> togglePower(bool value) async {
-    String device_id = DeviceInformations.act_device_id;
-
+    String deviceId = DeviceInformations.act_device_id;
     final powerItem = getItem("on/off");
     if (powerItem == null) return;
 
     final prefs = await SharedPreferences.getInstance();
     String token = prefs.getString("token") ?? "";
     int power = value ? 1 : 0;
+
     final response = await http.put(
       Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
       headers: {
@@ -216,35 +172,25 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",
       },
-      body: jsonEncode({"devid": device_id, "itemid": "1", "value": "$power"}),
+      body: jsonEncode({"devid": deviceId, "itemid": "1", "value": "$power"}),
     );
 
     if (response.statusCode == 200) {
-      setState(() {
-        isPowerOn = value;
-      });
-      print("power status${response.body}");
-      getDeviceData(); // refresh
-    } else {
-      print(response.body);
+      setState(() => isPowerOn = value);
+      getDeviceData();
     }
   }
 
   Future<void> updateTemperature(int value) async {
     if (isUpdatingTemp) return;
-    String device_id = DeviceInformations.act_device_id;
+    String deviceId = DeviceInformations.act_device_id;
 
-    setState(() {
-      isUpdatingTemp = true;
-    });
+    setState(() => isUpdatingTemp = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
-
-      final tempItem = deviceData.firstWhere(
-        (item) => item.alias == "Setpoint DHW",
-      );
+      final tempItem = deviceData.firstWhere((item) => item.alias == "Setpoint DHW");
 
       final response = await http.put(
         Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
@@ -254,518 +200,473 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
           "Authorization": "Bearer $token",
         },
         body: jsonEncode({
-          "devid": device_id,
+          "devid": deviceId,
           "itemid": tempItem.itemid,
           "value": value.toString(),
         }),
       );
 
-      print(response.body);
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
         if (data["data"] != null && data["data"]["status"] == "106") {
           final apiMsg = data['data']?['msg'] ?? "Something went wrong";
-
-          // check device status code
-          if (data['data']?['status'] == "106") {
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(apiMsg), backgroundColor: Colors.red),
             );
-            return;
           }
           return;
         }
-        setState(() {
-          targetTemp = value;
-        });
-
-        /// keep loader visible for 10 seconds
+        setState(() => targetTemp = value);
         await Future.delayed(const Duration(seconds: 10));
-
         await getDeviceData();
       }
     } catch (e) {
       print("TEMP UPDATE ERROR => $e");
     } finally {
-      setState(() {
-        isUpdatingTemp = false;
-      });
+      setState(() => isUpdatingTemp = false);
     }
   }
+// --- URL LAUNCHER HELPERS ---
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Could not open the phone dialer.")),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendEmail(String email) async {
+    final Uri emailLaunchUri = Uri(scheme: 'mailto', path: email);
+    if (await canLaunchUrl(emailLaunchUri)) {
+      await launchUrl(emailLaunchUri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Could not open the email client.")),
+        );
+      }
+    }
+  }
+  // --- UI BUILD METHODS ---
 
   @override
   Widget build(BuildContext context) {
-    if (isCheckingDevices) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF0A1A2F),
-        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+    if (isCheckingDevices || isLoading) {
+      return Scaffold(
+        backgroundColor: bgDark,
+        body: const Center(child: CircularProgressIndicator(color: Colors.blue)),
       );
     }
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0A1A2F), Color(0xFF0F2A4A)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height,
-              ),
+      backgroundColor: bgDark,
+      body: Stack(
+        children: [
+          // 1. Background Grid Pattern
+          // Positioned.fill(
+          //   child: CustomPaint(
+          //     painter: GridPainter(),
+          //   ),
+          // ),
+
+          // 2. Main Content
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Column(
                 children: [
-                  const SizedBox(height: 12),
-
-                  Row(
-                    children: [
-                      /// Left Section
-                      Expanded(
-                        child: Row(
-                          children: [
-                            /// Logo
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                image: DecorationImage(
-                                  image: AssetImage("assets/aether_4.png"),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(width: 12),
-
-                            /// Text Column
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  "Device Name",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 2),
-
-                                Text(
-                                  device_name,
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      /// Right Button
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => TransferScreen(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text(
-                          "Transfer",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  /// 🔌 POWER SWITCH
-                  SizedBox(height: 20),
-                  Row(
-                    children: [
-                      /// POWER CARD
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 18,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(22),
-                            color: Colors.white.withOpacity(0.06),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.08),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              /// Left Content
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
-                                  Text(
-                                    "Power",
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                ],
-                              ),
-
-                              /// Toggle
-                              GestureDetector(
-                                // onTap: () {
-                                //   togglePower(!isPowerOn);
-                                // },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 300),
-                                  width: 45,
-                                  height: 22,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(30),
-                                    gradient: isPowerOn
-                                        ? const LinearGradient(
-                                            colors: [
-                                              Color(0xFF00C853),
-                                              Color(0xFF64DD17),
-                                            ],
-                                          )
-                                        : LinearGradient(
-                                            colors: [
-                                              Colors.grey.shade700,
-                                              Colors.grey.shade800,
-                                            ],
-                                          ),
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      AnimatedPositioned(
-                                        duration: const Duration(
-                                          milliseconds: 300,
-                                        ),
-                                        left: isPowerOn ? 20 : 4,
-                                        top: 3,
-                                        child: Container(
-                                          width: 15,
-                                          height: 15,
-                                          decoration: const BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: Colors.white,
-                                          ),
-                                          child: Icon(
-                                            Icons.power_settings_new,
-                                            size: 14,
-                                            color: isPowerOn
-                                                ? Colors.green
-                                                : Colors.grey,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 14),
-
-                      /// STATUS CARD
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 18,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(22),
-                            color: Colors.white.withOpacity(0.06),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.08),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              /// Left Title
-                              const Text(
-                                "Status",
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-
-                              /// Right Status
-                              Row(
-                                children: [
-                                  /// Dot
-                                  Container(
-                                    width: 12,
-                                    height: 12,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: isDeviceActive
-                                          ? const Color(0xFF00E676)
-                                          : const Color(0xFFFF5252),
-
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: isDeviceActive
-                                              ? const Color(
-                                                  0xFF00E676,
-                                                ).withOpacity(0.7)
-                                              : const Color(
-                                                  0xFFFF5252,
-                                                ).withOpacity(0.7),
-                                          blurRadius: 8,
-                                          spreadRadius: 1,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  const SizedBox(width: 8),
-
-                                  /// Status Text
-                                  Text(
-                                    isDeviceActive ? "Active" : "Offline",
-                                    style: TextStyle(
-                                      color: isDeviceActive
-                                          ? const Color(0xFF00E676)
-                                          : const Color(0xFFFF5252),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  /// 🔵 BIG GLOWING CIRCLE
-                  ThermostatDial(
-                    temperature: currentTemp,
-                    solidColor: activeSolidColor,
-                    gradientColors: activeGradientColors,
-                  ),
-
+                  _buildTopBar(),
+                  const SizedBox(height: 24),
+                  _buildCustomerCard(), // Uses live customer data
+                  const SizedBox(height: 40),
+                  _buildMainDial(), // Uses live temp data
+                  const SizedBox(height: 24),
+                  _buildStatusPills(), // Uses live status data
                   const SizedBox(height: 30),
-
-                  /// ➖ ➕ BUTTONS
-                  // Row(
-                  //   mainAxisAlignment: MainAxisAlignment.center,
-                  //   children: [
-                  //     _circleBtn(Icons.remove, () {
-                  //       if (targetTemp >= 36) {
-                  //         updateTemperature(targetTemp - 1);
-                  //       } else {
-                  //         ScaffoldMessenger.of(context).showSnackBar(
-                  //           const SnackBar(
-                  //             content: Text("Minimum temperature is 35"),
-                  //           ),
-                  //         );
-                  //         return;
-                  //       }
-                  //     }),
-                  //     const SizedBox(width: 25),
-                  //     isUpdatingTemp
-                  //         ? const SizedBox(
-                  //             width: 30,
-                  //             height: 30,
-                  //             child: CircularProgressIndicator(
-                  //               color: Colors.white,
-                  //               strokeWidth: 3,
-                  //             ),
-                  //           )
-                  //         : Text(
-                  //             "$targetTemp°C",
-                  //             style: const TextStyle(
-                  //               color: Colors.white,
-                  //               fontSize: 22,
-                  //             ),
-                  //           ),
-                  //     const SizedBox(width: 25),
-                  //     _circleBtn(Icons.add, () {
-                  //       if (targetTemp <= 74) {
-                  //         updateTemperature(targetTemp + 1);
-                  //       } else {
-                  //         ScaffoldMessenger.of(context).showSnackBar(
-                  //           const SnackBar(
-                  //             content: Text("Maximum temperature is 75"),
-                  //           ),
-                  //         );
-                  //         return;
-                  //       }
-                  //     }),
-                  //   ],
-                  // ),
+                  _buildDataGrid(), // Live + mock data grid
                   const SizedBox(height: 30),
-
-                  /// 🔘 MODE BUTTONS
-                  Row(
-                    children: [
-                      _buildModeCard(
-                        "Eco",
-                        "Save energy",
-                        Icons.energy_savings_leaf_outlined,
-                        selectedMode == "Eco",
-                      ),
-                      const SizedBox(width: 10),
-                      _buildModeCard(
-                        "Comfort",
-                        "Everyday balance",
-                        Icons.shield_outlined,
-                        selectedMode == "Comfort",
-                      ),
-                      const SizedBox(width: 10),
-                      _buildModeCard(
-                        "Boost",
-                        "Fast heat",
-                        Icons.local_fire_department_outlined,
-                        selectedMode == "Boost",
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                  buildCustomerCard(),
-                  const SizedBox(height: 15),
-                  /// INFO CARDS
-                  // _infoCard("Defrost cycle", "Tap to start manual defrost"),
-                  // _infoCard("Next Schedule", "Morning shower - Tomorrow 05:30"),
                 ],
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget buildCustomerCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF162544),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(.08),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.person,
-                color: Color(0xFF00B4D8),
-                size: 26,
-              ),
-              SizedBox(width: 10),
-              Text(
-                "Customer Details",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          buildInfoRow(
-            Icons.person_outline,
-            "Name",
-            CustomerInformation.customerName.isNotEmpty
-                ? CustomerInformation.customerName
-                : "-",
-          ),
-
-          const Divider(color: Colors.white24),
-
-          buildInfoRow(
-            Icons.email_outlined,
-            "Email",
-            CustomerInformation.customerEmail.isNotEmpty
-                ? CustomerInformation.customerEmail
-                : "-",
-          ),
-
-          const Divider(color: Colors.white24),
-
-          buildInfoRow(
-            Icons.phone_outlined,
-            "Phone",
-            CustomerInformation.customerPhone.isNotEmpty
-                ? CustomerInformation.customerPhone
-                : "-",
           ),
         ],
       ),
     );
   }
-  Widget buildInfoRow(IconData icon, String title, String value) {
+
+  Widget _buildTopBar() {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: const Color(0xFF00B4D8), size: 22),
+        // Back Button
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: cardBg,
+            border: Border.all(color: cardBorder),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        const SizedBox(width: 16),
 
-        const SizedBox(width: 12),
-
+        // Title & Subtitle (Live Device Name)
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
+              const Text(
+                "Diagnostics",
                 style: TextStyle(
-                  color: Colors.white.withOpacity(.6),
-                  fontSize: 13,
-                ),
-              ),
-
-              const SizedBox(height: 3),
-
-              Text(
-                value,
-                style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 22,
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              const SizedBox(height: 2),
+              Text(
+                deviceName,
+                style: TextStyle(
+                  color: textGrey,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Assist Button
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF22B4F8), Color(0xFF00D4FF)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF00D4FF).withOpacity(0.4),
+                blurRadius: 15,
+                spreadRadius: 1,
+              )
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () {
+                // Assist action
+              },
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_awesome, color: Colors.black87, size: 16),
+                    SizedBox(width: 6),
+                    Text(
+                      "Assist",
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        )
+      ],
+    );
+  }
+  Widget _buildCustomerCard() {
+    // Safely parse Customer Name & Initial
+    String custName = CustomerInformation.customerName.isNotEmpty
+        ? CustomerInformation.customerName
+        : "Unknown Customer";
+    String initial = custName.isNotEmpty ? custName[0].toUpperCase() : "U";
+
+    String custEmail = CustomerInformation.customerEmail.isNotEmpty
+        ? CustomerInformation.customerEmail
+        : "";
+    String custPhone = CustomerInformation.customerPhone.isNotEmpty
+        ? CustomerInformation.customerPhone
+        : "";
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cardBorder),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              // Avatar
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4A90E2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      custName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "${custEmail.isNotEmpty ? custEmail : 'No Email Provided'}\n${custPhone.isNotEmpty ? custPhone : 'No Phone Provided'}",
+                      style: TextStyle(
+                        color: textGrey,
+                        fontSize: 11,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Action Buttons
+          Row(
+            children: [
+              // --- CALL BUTTON ---
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    if (custPhone.isNotEmpty) {
+                      _makePhoneCall(custPhone);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("No phone number available")),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.phone_outlined, size: 18, color: Colors.white70),
+                  label: const Text("Call", style: TextStyle(color: Colors.white70)),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: cardBorder),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    backgroundColor: Colors.white.withOpacity(0.02),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // --- MESSAGE (EMAIL) BUTTON ---
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    if (custEmail.isNotEmpty) {
+                      _sendEmail(custEmail);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("No email address available")),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.email_outlined, size: 18, color: Colors.white70),
+                  label: const Text("Message", style: TextStyle(color: Colors.white70)),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: cardBorder),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    backgroundColor: Colors.white.withOpacity(0.02),
+                  ),
+                ),
+              ),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+  Widget _buildMainDial() {
+    return Container(
+      width: 220,
+      height: 220,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: bgDark,
+        boxShadow: [
+          BoxShadow(
+            color: neonBlue.withOpacity(0.15),
+            blurRadius: 50,
+            spreadRadius: 10,
+          )
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Outer Ring
+          Container(
+            width: 220,
+            height: 220,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: neonBlue.withOpacity(0.3), width: 2),
+            ),
+          ),
+          // Inner Ring
+          Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: cardBorder, width: 6),
+            ),
+          ),
+          // Content
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 10),
+              Text(
+                "TANK",
+                style: TextStyle(
+                  color: textGrey,
+                  fontSize: 10,
+                  letterSpacing: 2,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    currentTemp,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 54,
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      unit,
+                      style: TextStyle(
+                        color: textGrey,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Horizontal glowing line cutting through
+          Positioned(
+            bottom: 60,
+            child: Container(
+              width: 140,
+              height: 2,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    neonBlue.withOpacity(0.0),
+                    neonBlue,
+                    neonBlue.withOpacity(0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusPills() {
+    return Column(
+      children: [
+        // Status Pill
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: cardBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: isPowerOn ? const Color(0xFFFF6D00) : Colors.grey,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isPowerOn ? "Heating" : "Standby",
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              )
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Connectivity Pill
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: isDeviceActive ? const Color(0xFF0F3D2E).withOpacity(0.5) : Colors.red.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: isDeviceActive ? const Color(0xFF1E6E5B) : Colors.redAccent),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: isDeviceActive ? const Color(0xFF00E676) : Colors.red,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isDeviceActive ? "Live - streaming telemetry" : "Offline",
+                style: TextStyle(color: isDeviceActive ? const Color(0xFF00E676) : Colors.red, fontSize: 11),
+              )
             ],
           ),
         ),
@@ -773,76 +674,112 @@ class _ThermostatUIState extends State<Installerdeviceinfoscreen> {
     );
   }
 
-  /// 🔘 Mode Card
-  Widget _buildModeCard(
-    String title,
-    String subtitle,
-    IconData icon,
-    bool isSelected,
-  ) {
+  Widget _buildDataGrid() {
+    // Finding specific values if available in deviceData array, otherwise using defaults/placeholders
+    String currentDefrost = getItem("Defrost")?.val ?? "Idle";
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            _buildGridCard(Icons.thermostat, "TANK", "$currentTemp$unit", "target $targetTemp°", neonBlue),
+            const SizedBox(width: 10),
+            _buildGridCard(Icons.show_chart, "MODE", selectedMode, "auto-balanced", neonBlue),
+            const SizedBox(width: 10),
+            _buildGridCard(Icons.ac_unit, "DEFROST", currentDefrost, "last 11:08", neonBlue),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _buildGridCard(Icons.speed, "COP", "3.84", "last 24h", neonBlue),
+            const SizedBox(width: 10),
+            _buildGridCard(Icons.access_time, "RUNTIME", runtime, "since install", neonBlue),
+            const SizedBox(width: 10),
+            _buildGridCard(Icons.flash_on, "POWER", "1.6 kW", "current draw", neonBlue),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGridCard(IconData icon, String title, String value, String subtitle, Color iconColor) {
     return Expanded(
-      child: GestureDetector(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            // UPDATED: Stronger start color, fading out
-            gradient: isSelected
-                ? LinearGradient(
-                    colors: [
-                      activeGradientColors.first.withOpacity(0.25),
-                      // Brighter top-left
-                      activeGradientColors.last.withOpacity(0.05),
-                      // Darker bottom-right
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
-            color: isSelected ? null : cardColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected
-                  ? activeSolidColor
-                  : Colors.white.withOpacity(0.03),
-              width: 1.5,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: cardBg.withOpacity(0.7),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: cardBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: iconColor, size: 18),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                color: textGrey,
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+              ),
             ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: activeSolidColor.withOpacity(0.2),
-                      blurRadius: 15,
-                      spreadRadius: 1,
-                    ),
-                  ]
-                : [],
-          ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? activeSolidColor : textGrey,
-                size: 24,
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: textGrey.withOpacity(0.6),
+                fontSize: 9,
               ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(color: textGrey, fontSize: 9),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+// Custom Painter to draw the faint blueprint-style grid background
+class GridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF1E293B).withOpacity(0.3)
+      ..strokeWidth = 1.0;
+
+    const double step = 20.0;
+
+    // Vertical lines
+    for (double x = 0; x <= size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+
+    // Horizontal lines
+    for (double y = 0; y <= size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+
+    // Draw subtle reddish overlay lines matching the image's matrix feel
+    final redPaint = Paint()
+      ..color = Colors.red.withOpacity(0.03)
+      ..strokeWidth = 1.0;
+
+    for (double x = 0; x <= size.width; x += step * 4) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), redPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -5,8 +5,10 @@ import 'package:untitled/authentication/NewProfileScreen.dart';
 import 'package:untitled/erroralert/AlertsScreen.dart';
 import 'package:untitled/installer/InstallerList.dart';
 import 'package:untitled/installer/InstallerProfile.dart';
+import 'package:untitled/pairdevice/ConnectScreen.dart';
 import 'package:untitled/scheduletimer/NewScheduleScreen.dart';
 
+import '../installer/InstallerFullList.dart';
 import 'NewDeviceControlScreen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -38,6 +40,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (roleType == "Installer") {
       return [
         const Installerlist(),
+        InstallerFulllist(),
+        ConnectScreen(),
         const Installerprofile(),
       ];
     }
@@ -83,7 +87,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: roleType == "Installer"
                 ? [
               _navItem(Icons.home_rounded, "Home", 0),
-              _navItem(Icons.person_outline, "Profile", 1),
+              _navItem(Icons.dashboard_outlined, "System", 1),
+              _navItem(Icons.add_circle_outline, "Link", 2),
+              _navItem(Icons.person_outline, "Profile", 3),
             ]
                 : [
               _navItem(Icons.home_rounded, "Home", 0),

@@ -35,21 +35,25 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   List<DeviceDataModel> deviceData = [];
   bool isDeviceActive = false;
   String device_name = "";
-  Timer? _deviceDataTimer;
   bool isMinusPressed = false;
   bool isPlusPressed = false;
   bool _isFetching = false;
   bool _isWaitingForUpdate = false;
   Timer? _temperatureDebounce;
+  Timer? _deviceDataTimer;
+  bool ismodeclick = false;
 
   // New Global Controls for API Triggers
   bool _isProcessing = false;
   Timer? _cooldownTimer;
+  Timer? modechange;
   List<dynamic> weatherList = [];
   String error = "";
   String location = "";
   String timezone = "";
   bool change_target = false;
+  Timer? _apiUpdateTimer;
+  bool _ignoreApiUpdates = false;
 
   // Design Colors
   final Color bgColorStart = const Color(0xFF0F1725);
@@ -94,8 +98,8 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       ),
     );
     loadUserDeviceList();
-    _deviceDataTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      getDeviceData();
+    modechange = Timer.periodic(const Duration(seconds: 4), (timer) {
+      getDeviceModeData();
     });
     getWeatherForecast();
   }
@@ -112,6 +116,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   void dispose() {
     _deviceDataTimer?.cancel();
     _cooldownTimer?.cancel();
+    modechange?.cancel();
     _temperatureDebounce?.cancel();
     super.dispose();
   }
@@ -176,6 +181,60 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           isPowerOn = setPointDataPower.val == "1";
           isLoading = false;
         });
+      } else {
+        setState(() => isLoading = false);
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+    } finally {
+      _isFetching = false;
+    }
+  }
+
+  Future<void> getDeviceModeData() async {
+    if (_isFetching) return;
+    _isFetching = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String token = prefs.getString("token") ?? "";
+      String deviceId = DeviceInformations.act_device_id;
+
+      final response = await http.get(
+        Uri.parse(
+          "https://aetherone.com.au/api/v1/heat-pump-2/devices/$deviceId/current-data",
+        ),
+        headers: {
+          "Accept": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        final List dataList = decoded['data']['data'];
+        print("mode click {$ismodeclick}");
+        if (ismodeclick) {
+          setState(() {
+            deviceData = dataList
+                .map((e) => DeviceDataModel.fromJson(e))
+                .toList();
+            final setPointData = deviceData.firstWhere(
+              (item) => item.itemid == "3",
+            );
+            final setPointDataMode = deviceData.firstWhere(
+              (item) => item.itemid == "2",
+            );
+            final setPointDataPower = deviceData.firstWhere(
+              (item) => item.itemid == "1",
+            );
+
+            currentTemp = setPointData.val;
+            targetTemp = int.parse(setPointData.val);
+            unit = setPointData.unit;
+            isPowerOn = setPointDataPower.val == "1";
+
+            isLoading = false;
+          });
+        }
       } else {
         setState(() => isLoading = false);
       }
@@ -303,6 +362,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   }
 
   Future<void> updateMode(String mode) async {
+    ismodeclick = true;
     if (!isDeviceActive) {
       ScaffoldMessenger.of(
         context,
@@ -310,7 +370,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       return;
     }
     if (_isProcessing) return; // Block fast multi-clicks
-    _startCooldown();
+    //_startCooldown();
 
     String device_id = DeviceInformations.act_device_id;
     final modeItem = getItem("mode");
@@ -326,9 +386,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     String token = prefs.getString("token") ?? "";
-
     setState(() => selectedMode = mode);
-
     try {
       final response = await http.put(
         Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
@@ -345,7 +403,13 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       );
       if (response.statusCode == 200) {
         change_target = false;
-        await waitForDeviceUpdate(itemId: "2", expectedValue: api_mode);
+        //await waitForDeviceUpdate(itemId: "2", expectedValue: api_mode);
+        _deviceDataTimer?.cancel();
+
+        // Schedule getDeviceData after 5 seconds
+        _deviceDataTimer = Timer(const Duration(seconds: 5), () async {
+          await getDeviceData();
+        });
       }
     } catch (e) {
       print("MODE UPDATE ERROR => $e");
@@ -353,6 +417,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   }
 
   Future<void> updatePower() async {
+    ismodeclick = false;
     if (!isDeviceActive) {
       ScaffoldMessenger.of(
         context,
@@ -360,7 +425,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       return;
     }
     if (_isProcessing) return; // Block fast multi-clicks
-    _startCooldown();
+    //_startCooldown();
 
     String deviceId = DeviceInformations.act_device_id;
     final prefs = await SharedPreferences.getInstance();
@@ -384,10 +449,16 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
       if (response.statusCode == 200) {
         change_target = false;
-        await waitForDeviceUpdate(
-          itemId: "1",
-          expectedValue: apiMode.toString(),
-        );
+        // await waitForDeviceUpdate(
+        //   itemId: "1",
+        //   expectedValue: apiMode.toString(),
+        // );
+        _deviceDataTimer?.cancel();
+
+        // Schedule getDeviceData after 5 seconds
+        _deviceDataTimer = Timer(const Duration(seconds: 5), () async {
+          await getDeviceData();
+        });
       } else {
         setState(() {
           isPowerOn = !isPowerOn;
@@ -401,10 +472,12 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   }
 
   void onTemperatureChanged(int value) {
+    ismodeclick = false;
     change_target = true;
     // Update UI immediately
     setState(() {
       targetTemp = value;
+      currentTemp = value.toString();
     });
 
     // Cancel previous timer
@@ -413,6 +486,12 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     // Wait 500ms after last click
     _temperatureDebounce = Timer(const Duration(milliseconds: 800), () {
       updateTemperature(value);
+    });
+    _deviceDataTimer?.cancel();
+
+    // Schedule getDeviceData after 5 seconds
+    _deviceDataTimer = Timer(const Duration(seconds: 5), () async {
+      await getDeviceData();
     });
   }
 
@@ -754,23 +833,14 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 2),
-                                isUpdatingTemp
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : Text(
-                                        "$targetTemp°C",
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
+                                Text(
+                                  "$targetTemp°C",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
