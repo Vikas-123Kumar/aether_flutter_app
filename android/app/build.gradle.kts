@@ -15,7 +15,6 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.aethersmart.aether"
-    compileSdk = flutter.compileSdkVersion
 
     ndkVersion = "27.0.12077973"
     compileSdk = 36
@@ -33,7 +32,6 @@ android {
         applicationId = "com.aethersmart.aether"
         minSdk = 23
         targetSdk = 36
-        targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
