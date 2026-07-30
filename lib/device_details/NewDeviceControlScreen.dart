@@ -25,8 +25,8 @@ class NewDeviceControlScreen extends StatefulWidget {
 class _ThermostatUIState extends State<NewDeviceControlScreen> {
   String currentTemp = "0";
   String unit = "";
-  int targetTemp = 52;
-  String selectedMode = "Comfort";
+  int targetTemp = 35;
+  String selectedMode = "ECO";
   bool isUpdatingTemp = false;
   String mode = "ECO";
   bool isLoading = false;
@@ -42,6 +42,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   Timer? _temperatureDebounce;
   Timer? _deviceDataTimer;
   bool ismodeclick = false;
+  bool mode_update_first = false;
 
   // New Global Controls for API Triggers
   bool _isProcessing = false;
@@ -52,9 +53,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   String location = "";
   String timezone = "";
   bool change_target = false;
-  Timer? _apiUpdateTimer;
-  bool _ignoreApiUpdates = false;
-
+bool is_power_update=false;
   // Design Colors
   final Color bgColorStart = const Color(0xFF0F1725);
   final Color bgColorEnd = const Color(0xFF0A101A);
@@ -98,7 +97,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       ),
     );
     loadUserDeviceList();
-    modechange = Timer.periodic(const Duration(seconds: 4), (timer) {
+    modechange = Timer.periodic(const Duration(seconds: 2), (timer) {
       getDeviceModeData();
     });
     getWeatherForecast();
@@ -121,17 +120,6 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     super.dispose();
   }
 
-  // Helper method to start standard 5-second lock window
-  void _startCooldown() {
-    setState(() => _isProcessing = true);
-    _cooldownTimer?.cancel();
-    _cooldownTimer = Timer(const Duration(seconds: 5), () {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-      }
-    });
-  }
-
   Future<void> getDeviceData() async {
     if (_isFetching) return;
     _isFetching = true;
@@ -139,7 +127,6 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
       String deviceId = DeviceInformations.act_device_id;
-
       final response = await http.get(
         Uri.parse(
           "https://aetherone.com.au/api/v1/heat-pump-2/devices/$deviceId/current-data",
@@ -165,16 +152,28 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           final setPointDataPower = deviceData.firstWhere(
             (item) => item.itemid == "1",
           );
-
-          if (setPointDataMode.val == "0") {
-            selectedMode = "Eco";
-          } else if (setPointDataMode.val == "1") {
-            selectedMode = "Comfort";
-          } else if (setPointDataMode.val == "2") {
-            selectedMode = "Boost";
+          if (!mode_update_first) {
+            mode_update_first = true;
+            if (setPointDataMode.val == "2") {
+              selectedMode = "Eco";
+            } else if (setPointDataMode.val == "0") {
+              selectedMode = "Comfort";
+            } else if (setPointDataMode.val == "1") {
+              selectedMode = "Boost";
+            }
+          }else if(is_power_update){
+            is_power_update=false;
+            mode_update_first = true;
+            if (setPointDataMode.val == "2") {
+              selectedMode = "Eco";
+            } else if (setPointDataMode.val == "0") {
+              selectedMode = "Comfort";
+            } else if (setPointDataMode.val == "1") {
+              selectedMode = "Boost";
+            }
           }
-          currentTemp = setPointData.val;
           if (!change_target) {
+            currentTemp = setPointData.val;
             targetTemp = int.parse(setPointData.val);
           }
           unit = setPointData.unit;
@@ -198,7 +197,6 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
       String deviceId = DeviceInformations.act_device_id;
-
       final response = await http.get(
         Uri.parse(
           "https://aetherone.com.au/api/v1/heat-pump-2/devices/$deviceId/current-data",
@@ -226,12 +224,10 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
             final setPointDataPower = deviceData.firstWhere(
               (item) => item.itemid == "1",
             );
-
             currentTemp = setPointData.val;
             targetTemp = int.parse(setPointData.val);
             unit = setPointData.unit;
             isPowerOn = setPointDataPower.val == "1";
-
             isLoading = false;
           });
         }
@@ -280,30 +276,6 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         isLoading = false;
       });
     }
-  }
-
-  Future<bool> waitForDeviceUpdate({
-    required String itemId,
-    required String expectedValue,
-    Duration timeout = const Duration(seconds: 20),
-  }) async {
-    if (_isWaitingForUpdate) return false;
-
-    _isWaitingForUpdate = true;
-    final endTime = DateTime.now().add(timeout);
-
-    while (DateTime.now().isBefore(endTime)) {
-      await getDeviceData();
-      final item = deviceData.where((e) => e.itemid == itemId);
-      if (item.isNotEmpty && item.first.val == expectedValue) {
-        _isWaitingForUpdate = false;
-        return true;
-      }
-      // Check every 2 seconds
-      await Future.delayed(const Duration(seconds: 3));
-    }
-    _isWaitingForUpdate = false;
-    return false;
   }
 
   Future<void> loadUserDeviceList() async {
@@ -363,30 +335,31 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
   Future<void> updateMode(String mode) async {
     ismodeclick = true;
+
     if (!isDeviceActive) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Device is offline")));
       return;
     }
-    if (_isProcessing) return; // Block fast multi-clicks
-    //_startCooldown();
-
+    if (_isProcessing) return;
+    // NEW
+    setState(() {
+      selectedMode = mode; // Keep selected mode immediately
+    });
     String device_id = DeviceInformations.act_device_id;
-    final modeItem = getItem("mode");
-    if (modeItem == null) return;
-
     String api_mode = "0";
-    if (mode == "Eco")
-      api_mode = "0";
-    else if (mode == "Comfort")
-      api_mode = "1";
-    else if (mode == "Boost")
+    if (mode == "Eco") {
       api_mode = "2";
+    } else if (mode == "Comfort") {
+      api_mode = "0";
+    } else if (mode == "Boost") {
+      api_mode = "1";
+    }
 
     final prefs = await SharedPreferences.getInstance();
     String token = prefs.getString("token") ?? "";
-    setState(() => selectedMode = mode);
+
     try {
       final response = await http.put(
         Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
@@ -401,18 +374,11 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           "value": api_mode,
         }),
       );
-      if (response.statusCode == 200) {
-        change_target = false;
-        //await waitForDeviceUpdate(itemId: "2", expectedValue: api_mode);
-        _deviceDataTimer?.cancel();
 
-        // Schedule getDeviceData after 5 seconds
-        _deviceDataTimer = Timer(const Duration(seconds: 5), () async {
-          await getDeviceData();
-        });
-      }
+      if (response.statusCode == 200) {
+      } else {}
     } catch (e) {
-      print("MODE UPDATE ERROR => $e");
+      print(e);
     }
   }
 
@@ -457,6 +423,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
         // Schedule getDeviceData after 5 seconds
         _deviceDataTimer = Timer(const Duration(seconds: 5), () async {
+          is_power_update=true;
           await getDeviceData();
         });
       } else {
@@ -502,9 +469,6 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       ).showSnackBar(const SnackBar(content: Text("Device is offline")));
       return;
     }
-    // if (_isProcessing || isUpdatingTemp) return; // Block fast multi-clicks
-    // _startCooldown();
-
     String device_id = DeviceInformations.act_device_id;
 
     setState(() {
@@ -766,11 +730,57 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                       );
                                       return;
                                     }
+                                    if (!isDeviceActive) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text("Device is offline"),
+                                        ),
+                                      );
+                                      return;
+                                    }
                                     setState(() {
                                       selectedButton = 'minus';
                                     });
+                                    int maxTemp;
+                                    switch (selectedMode) {
+                                      case "Eco":
+                                        maxTemp = 55;
+                                        break;
+                                      case "Comfort":
+                                        maxTemp = 60;
+                                        break;
+                                      case "Boost":
+                                        maxTemp = 70;
+                                        break;
+                                      default:
+                                        maxTemp = 70; // Default safety limit
+                                    }
                                     if (targetTemp > 35) {
-                                      onTemperatureChanged(targetTemp - 1);
+                                      if (maxTemp < targetTemp) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              "Maximum temperature for $selectedMode mode is ${maxTemp}°C.",
+                                            ),
+                                          ),
+                                        );
+                                      }else{
+                                        onTemperatureChanged(targetTemp - 1);
+                                      }
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Minimum temperature is 35°C. You can't reduce it further.",
+                                          ),
+                                        ),
+                                      );
                                     }
                                   },
                             child: AnimatedContainer(
@@ -866,11 +876,45 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                       );
                                       return;
                                     }
+                                    if (!isDeviceActive) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text("Device is offline"),
+                                        ),
+                                      );
+                                      return;
+                                    }
                                     setState(() {
                                       selectedButton = 'plus';
                                     });
-                                    if (targetTemp < 75) {
+                                    int maxTemp;
+                                    switch (selectedMode) {
+                                      case "Eco":
+                                        maxTemp = 55;
+                                        break;
+                                      case "Comfort":
+                                        maxTemp = 60;
+                                        break;
+                                      case "Boost":
+                                        maxTemp = 70;
+                                        break;
+                                      default:
+                                        maxTemp = 70; // Default safety limit
+                                    }
+                                    if (targetTemp < maxTemp) {
                                       onTemperatureChanged(targetTemp + 1);
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            "Maximum temperature for $selectedMode mode is ${maxTemp}°C.",
+                                          ),
+                                        ),
+                                      );
                                     }
                                   },
                             child: AnimatedContainer(

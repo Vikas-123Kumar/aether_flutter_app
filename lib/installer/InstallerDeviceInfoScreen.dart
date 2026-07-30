@@ -15,7 +15,8 @@ class Installerdeviceinfoscreen extends StatefulWidget {
   const Installerdeviceinfoscreen({super.key, required this.deviceId});
 
   @override
-  State<Installerdeviceinfoscreen> createState() => _InstallerdeviceinfoscreenState();
+  State<Installerdeviceinfoscreen> createState() =>
+      _InstallerdeviceinfoscreenState();
 }
 
 class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
@@ -24,7 +25,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
   String unit = "°C";
   int targetTemp = 52;
   String selectedMode = "Comfort";
-  String runtime="";
+  String runtime = "";
   bool isUpdatingTemp = false;
   bool isLoading = true;
   bool isPowerOn = false;
@@ -89,18 +90,28 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
           if (DeviceInformations.is_online == "1") {
             isDeviceActive = true;
           }
-          deviceData = dataList.map((e) => DeviceDataModel.fromJson(e)).toList();
+          deviceData = dataList
+              .map((e) => DeviceDataModel.fromJson(e))
+              .toList();
 
-          final setPointData = deviceData.firstWhere((item) => item.itemid == "3");
-          final setPointDataMode = deviceData.firstWhere((item) => item.itemid == "2");
-          final setPointDataPower = deviceData.firstWhere((item) => item.itemid == "1");
-          final dc_runtime = deviceData.firstWhere((item) => item.itemid == "25");
+          final setPointData = deviceData.firstWhere(
+            (item) => item.itemid == "3",
+          );
+          final setPointDataMode = deviceData.firstWhere(
+            (item) => item.itemid == "2",
+          );
+          final setPointDataPower = deviceData.firstWhere(
+            (item) => item.itemid == "1",
+          );
+          final dc_runtime = deviceData.firstWhere(
+            (item) => item.itemid == "25",
+          );
 
-          if (setPointDataMode.val == "0") {
+          if (setPointDataMode.val == "2") {
             selectedMode = "Eco";
-          } else if (setPointDataMode.val == "1") {
+          } else if (setPointDataMode.val == "0") {
             selectedMode = "Comfort";
-          } else if (setPointDataMode.val == "2") {
+          } else if (setPointDataMode.val == "1") {
             selectedMode = "Boost";
           }
 
@@ -108,7 +119,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
           targetTemp = int.parse(setPointData.val);
           unit = setPointData.unit;
           isPowerOn = setPointDataPower.val == "1";
-          runtime=dc_runtime.val;
+          runtime = dc_runtime.val;
           isLoading = false;
         });
       } else {
@@ -124,110 +135,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
     }
   }
 
-  Future<void> updateMode(String mode) async {
-    String deviceId = DeviceInformations.act_device_id;
-    final modeItem = getItem("mode");
-    if (modeItem == null) return;
-    String apiMode = "0";
-    final prefs = await SharedPreferences.getInstance();
-    String token = prefs.getString("token") ?? "";
-
-    if (mode == "Eco") apiMode = "0";
-    else if (mode == "Comfort") apiMode = "1";
-    else if (mode == "Boost") apiMode = "2";
-
-    final response = await http.put(
-      Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      },
-      body: jsonEncode({
-        "devid": deviceId,
-        "itemid": "",
-        "value": "mode=$apiMode",
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      setState(() => selectedMode = mode);
-      getDeviceData();
-    }
-  }
-
-  Future<void> togglePower(bool value) async {
-    String deviceId = DeviceInformations.act_device_id;
-    final powerItem = getItem("on/off");
-    if (powerItem == null) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    String token = prefs.getString("token") ?? "";
-    int power = value ? 1 : 0;
-
-    final response = await http.put(
-      Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      },
-      body: jsonEncode({"devid": deviceId, "itemid": "1", "value": "$power"}),
-    );
-
-    if (response.statusCode == 200) {
-      setState(() => isPowerOn = value);
-      getDeviceData();
-    }
-  }
-
-  Future<void> updateTemperature(int value) async {
-    if (isUpdatingTemp) return;
-    String deviceId = DeviceInformations.act_device_id;
-
-    setState(() => isUpdatingTemp = true);
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      String token = prefs.getString("token") ?? "";
-      final tempItem = deviceData.firstWhere((item) => item.alias == "Setpoint DHW");
-
-      final response = await http.put(
-        Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
-        body: jsonEncode({
-          "devid": deviceId,
-          "itemid": tempItem.itemid,
-          "value": value.toString(),
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data["data"] != null && data["data"]["status"] == "106") {
-          final apiMsg = data['data']?['msg'] ?? "Something went wrong";
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(apiMsg), backgroundColor: Colors.red),
-            );
-          }
-          return;
-        }
-        setState(() => targetTemp = value);
-        await Future.delayed(const Duration(seconds: 10));
-        await getDeviceData();
-      }
-    } catch (e) {
-      print("TEMP UPDATE ERROR => $e");
-    } finally {
-      setState(() => isUpdatingTemp = false);
-    }
-  }
-// --- URL LAUNCHER HELPERS ---
+  // --- URL LAUNCHER HELPERS ---
   Future<void> _makePhoneCall(String phoneNumber) async {
     final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
     if (await canLaunchUrl(launchUri)) {
@@ -253,6 +161,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
       }
     }
   }
+
   // --- UI BUILD METHODS ---
 
   @override
@@ -260,7 +169,9 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
     if (isCheckingDevices || isLoading) {
       return Scaffold(
         backgroundColor: bgDark,
-        body: const Center(child: CircularProgressIndicator(color: Colors.blue)),
+        body: const Center(
+          child: CircularProgressIndicator(color: Colors.blue),
+        ),
       );
     }
 
@@ -333,13 +244,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
                 ),
               ),
               const SizedBox(height: 2),
-              Text(
-                deviceName,
-                style: TextStyle(
-                  color: textGrey,
-                  fontSize: 12,
-                ),
-              ),
+              Text(deviceName, style: TextStyle(color: textGrey, fontSize: 12)),
             ],
           ),
         ),
@@ -356,7 +261,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
                 color: const Color(0xFF00D4FF).withOpacity(0.4),
                 blurRadius: 15,
                 spreadRadius: 1,
-              )
+              ),
             ],
           ),
           child: Material(
@@ -385,10 +290,11 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
               ),
             ),
           ),
-        )
+        ),
       ],
     );
   }
+
   Widget _buildCustomerCard() {
     // Safely parse Customer Name & Initial
     String custName = CustomerInformation.customerName.isNotEmpty
@@ -472,15 +378,26 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
                       _makePhoneCall(custPhone);
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("No phone number available")),
+                        const SnackBar(
+                          content: Text("No phone number available"),
+                        ),
                       );
                     }
                   },
-                  icon: const Icon(Icons.phone_outlined, size: 18, color: Colors.white70),
-                  label: const Text("Call", style: TextStyle(color: Colors.white70)),
+                  icon: const Icon(
+                    Icons.phone_outlined,
+                    size: 18,
+                    color: Colors.white70,
+                  ),
+                  label: const Text(
+                    "Call",
+                    style: TextStyle(color: Colors.white70),
+                  ),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: cardBorder),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     backgroundColor: Colors.white.withOpacity(0.02),
                   ),
                 ),
@@ -494,25 +411,37 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
                       _sendEmail(custEmail);
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("No email address available")),
+                        const SnackBar(
+                          content: Text("No email address available"),
+                        ),
                       );
                     }
                   },
-                  icon: const Icon(Icons.email_outlined, size: 18, color: Colors.white70),
-                  label: const Text("Message", style: TextStyle(color: Colors.white70)),
+                  icon: const Icon(
+                    Icons.email_outlined,
+                    size: 18,
+                    color: Colors.white70,
+                  ),
+                  label: const Text(
+                    "Message",
+                    style: TextStyle(color: Colors.white70),
+                  ),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: cardBorder),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     backgroundColor: Colors.white.withOpacity(0.02),
                   ),
                 ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );
   }
+
   Widget _buildMainDial() {
     return Container(
       width: 220,
@@ -525,7 +454,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
             color: neonBlue.withOpacity(0.15),
             blurRadius: 50,
             spreadRadius: 10,
-          )
+          ),
         ],
       ),
       child: Stack(
@@ -580,10 +509,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
                       unit,
-                      style: TextStyle(
-                        color: textGrey,
-                        fontSize: 20,
-                      ),
+                      style: TextStyle(color: textGrey, fontSize: 20),
                     ),
                   ),
                 ],
@@ -638,7 +564,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
               Text(
                 isPowerOn ? "Heating" : "Standby",
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
-              )
+              ),
             ],
           ),
         ),
@@ -647,9 +573,15 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: isDeviceActive ? const Color(0xFF0F3D2E).withOpacity(0.5) : Colors.red.withOpacity(0.2),
+            color: isDeviceActive
+                ? const Color(0xFF0F3D2E).withOpacity(0.5)
+                : Colors.red.withOpacity(0.2),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: isDeviceActive ? const Color(0xFF1E6E5B) : Colors.redAccent),
+            border: Border.all(
+              color: isDeviceActive
+                  ? const Color(0xFF1E6E5B)
+                  : Colors.redAccent,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -665,8 +597,11 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
               const SizedBox(width: 8),
               Text(
                 isDeviceActive ? "Live - streaming telemetry" : "Offline",
-                style: TextStyle(color: isDeviceActive ? const Color(0xFF00E676) : Colors.red, fontSize: 11),
-              )
+                style: TextStyle(
+                  color: isDeviceActive ? const Color(0xFF00E676) : Colors.red,
+                  fontSize: 11,
+                ),
+              ),
             ],
           ),
         ),
@@ -682,11 +617,29 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
       children: [
         Row(
           children: [
-            _buildGridCard(Icons.thermostat, "TANK", "$currentTemp$unit", "target $targetTemp°", neonBlue),
+            _buildGridCard(
+              Icons.thermostat,
+              "TANK",
+              "$currentTemp$unit",
+              "target $targetTemp°",
+              neonBlue,
+            ),
             const SizedBox(width: 10),
-            _buildGridCard(Icons.show_chart, "MODE", selectedMode, "auto-balanced", neonBlue),
+            _buildGridCard(
+              Icons.show_chart,
+              "MODE",
+              selectedMode,
+              "auto-balanced",
+              neonBlue,
+            ),
             const SizedBox(width: 10),
-            _buildGridCard(Icons.ac_unit, "DEFROST", currentDefrost, "last 11:08", neonBlue),
+            _buildGridCard(
+              Icons.ac_unit,
+              "DEFROST",
+              currentDefrost,
+              "last 11:08",
+              neonBlue,
+            ),
           ],
         ),
         const SizedBox(height: 10),
@@ -694,16 +647,34 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
           children: [
             _buildGridCard(Icons.speed, "COP", "3.84", "last 24h", neonBlue),
             const SizedBox(width: 10),
-            _buildGridCard(Icons.access_time, "RUNTIME", runtime, "since install", neonBlue),
+            _buildGridCard(
+              Icons.access_time,
+              "RUNTIME",
+              runtime,
+              "since install",
+              neonBlue,
+            ),
             const SizedBox(width: 10),
-            _buildGridCard(Icons.flash_on, "POWER", "1.6 kW", "current draw", neonBlue),
+            _buildGridCard(
+              Icons.flash_on,
+              "POWER",
+              "1.6 kW",
+              "current draw",
+              neonBlue,
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildGridCard(IconData icon, String title, String value, String subtitle, Color iconColor) {
+  Widget _buildGridCard(
+    IconData icon,
+    String title,
+    String value,
+    String subtitle,
+    Color iconColor,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -738,10 +709,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
             const SizedBox(height: 2),
             Text(
               subtitle,
-              style: TextStyle(
-                color: textGrey.withOpacity(0.6),
-                fontSize: 9,
-              ),
+              style: TextStyle(color: textGrey.withOpacity(0.6), fontSize: 9),
             ),
           ],
         ),

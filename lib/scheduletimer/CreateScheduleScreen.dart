@@ -23,7 +23,8 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
   final List<bool> _selectedDays = List.filled(7, false);
   bool _isScheduleActive = true;
   bool _isLoading = false;
-
+  double min_temp = 35.0;
+  double max_temp = 55.0;
   final TextEditingController scheduleController = TextEditingController();
 
   // Figma Theme Base Colors
@@ -60,11 +61,11 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
   int _getModeValue(String mode) {
     switch (mode) {
       case 'Eco':
-        return 0;
-      case 'Comfort':
-        return 1;
-      case 'Boost':
         return 2;
+      case 'Comfort':
+        return 0;
+      case 'Boost':
+        return 1;
       default:
         return 1;
     }
@@ -122,6 +123,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
         }
       } else {
         if (mounted) {
+          print("message${response.body} ");
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Server error: ${response.statusCode}")),
           );
@@ -484,8 +486,8 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
                         ),
                         child: Slider(
                           value: _targetWaterTemp,
-                          min: 35.0,
-                          max: 75.0,
+                          min: min_temp,
+                          max: max_temp,
                           onChanged: _isLoading
                               ? null
                               : (value) {
@@ -501,14 +503,14 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              "35°",
+                              min_temp.toString(),
                               style: TextStyle(
                                 color: subTextColor,
                                 fontSize: 10,
                               ),
                             ),
                             Text(
-                              "75°",
+                              max_temp.toString(),
                               style: TextStyle(
                                 color: subTextColor,
                                 fontSize: 10,
@@ -544,7 +546,25 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
                       child: GestureDetector(
                         onTap: _isLoading
                             ? null
-                            : () => setState(() => _selectedMode = mode),
+                            : () {
+                          setState(() {
+                            _selectedMode = mode;
+
+                            // 1. Set max temp based on mode
+                            if (mode == 'Eco') {
+                              max_temp = 55.0;
+                            } else if (mode == 'Comfort') {
+                              max_temp = 60.0;
+                            } else if (mode == 'Boost') {
+                              max_temp = 70.0;
+                            }
+
+                            // 2. Clamp current temp if it exceeds the new max
+                            if (_targetWaterTemp > max_temp) {
+                              _targetWaterTemp = max_temp;
+                            }
+                          });
+                        },
                         child: Container(
                           margin: const EdgeInsets.only(right: 8),
                           padding: const EdgeInsets.symmetric(vertical: 16),

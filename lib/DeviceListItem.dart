@@ -75,11 +75,11 @@ class _DeviceListItemState extends State<DeviceListItem> {
             }
 
             if (setPointDataMode != null) {
-              if (setPointDataMode["val"] == "0") {
+              if (setPointDataMode["val"] == "2") {
                 selectedMode = "Eco";
-              } else if (setPointDataMode["val"] == "1") {
+              } else if (setPointDataMode["val"] == "0") {
                 selectedMode = "Comfort";
-              } else if (setPointDataMode["val"] == "2") {
+              } else if (setPointDataMode["val"] == "1") {
                 selectedMode = "Boost";
               }
             }

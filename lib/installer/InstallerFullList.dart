@@ -128,15 +128,6 @@ class _DashboardScreenState extends State<InstallerFulllist> {
                 (item) => item.itemid == "1",
           );
           print(" data points${setPointData.val}${setPointData.unit}");
-          if (setPointDataMode.val == "0") {
-            selectedMode = "Eco";
-          } else if (setPointDataMode.val == "1") {
-            selectedMode = "Comfort";
-          } else if (setPointDataMode.val == "2") {
-            selectedMode = "Boost";
-          }
-          print(" mode points${setPointDataMode.val}   $selectedMode");
-
           currentTemp = setPointData.val;
           targetTemp = int.parse(setPointData.val);
           unit = setPointData.unit;
