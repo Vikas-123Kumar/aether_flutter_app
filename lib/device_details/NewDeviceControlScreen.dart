@@ -53,7 +53,10 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   String location = "";
   String timezone = "";
   bool change_target = false;
-bool is_power_update=false;
+  bool is_power_update = false;
+
+  String pre_mode = "", current_mode = "", coming_mode = "";
+
   // Design Colors
   final Color bgColorStart = const Color(0xFF0F1725);
   final Color bgColorEnd = const Color(0xFF0A101A);
@@ -98,7 +101,8 @@ bool is_power_update=false;
     );
     loadUserDeviceList();
     modechange = Timer.periodic(const Duration(seconds: 2), (timer) {
-      getDeviceModeData();
+      getDeviceModeDataForTemp();
+      //getDeviceModeData();
     });
     getWeatherForecast();
   }
@@ -161,8 +165,8 @@ bool is_power_update=false;
             } else if (setPointDataMode.val == "1") {
               selectedMode = "Boost";
             }
-          }else if(is_power_update){
-            is_power_update=false;
+          } else if (is_power_update) {
+            is_power_update = false;
             mode_update_first = true;
             if (setPointDataMode.val == "2") {
               selectedMode = "Eco";
@@ -172,6 +176,7 @@ bool is_power_update=false;
               selectedMode = "Boost";
             }
           }
+          pre_mode = selectedMode;
           if (!change_target) {
             currentTemp = setPointData.val;
             targetTemp = int.parse(setPointData.val);
@@ -190,7 +195,7 @@ bool is_power_update=false;
     }
   }
 
-  Future<void> getDeviceModeData() async {
+  Future<void> getDeviceModeDataForTemp() async {
     if (_isFetching) return;
     _isFetching = true;
     try {
@@ -218,9 +223,6 @@ bool is_power_update=false;
             final setPointData = deviceData.firstWhere(
               (item) => item.itemid == "3",
             );
-            final setPointDataMode = deviceData.firstWhere(
-              (item) => item.itemid == "2",
-            );
             final setPointDataPower = deviceData.firstWhere(
               (item) => item.itemid == "1",
             );
@@ -231,6 +233,63 @@ bool is_power_update=false;
             isLoading = false;
           });
         }
+      } else {
+        setState(() => isLoading = false);
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+    } finally {
+      _isFetching = false;
+    }
+  }
+
+  Future<void> getDeviceModeData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String token = prefs.getString("token") ?? "";
+      String deviceId = DeviceInformations.act_device_id;
+      final response = await http.get(
+        Uri.parse(
+          "https://aetherone.com.au/api/v1/heat-pump-2/devices/$deviceId/current-data",
+        ),
+        headers: {
+          "Accept": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        final List dataList = decoded['data']['data'];
+        print("mode click 2{$ismodeclick}");
+
+        setState(() {
+          deviceData = dataList
+              .map((e) => DeviceDataModel.fromJson(e))
+              .toList();
+          final setPointData = deviceData.firstWhere(
+            (item) => item.itemid == "3",
+          );
+          final setPointDataMode = deviceData.firstWhere(
+            (item) => item.itemid == "2",
+          );
+          final setPointDataPower = deviceData.firstWhere(
+            (item) => item.itemid == "1",
+          );
+          if (!ismodeclick && !change_target) {
+            if (setPointDataMode.val == "2") {
+              selectedMode = "Eco";
+            } else if (setPointDataMode.val == "0") {
+              selectedMode = "Comfort";
+            } else if (setPointDataMode.val == "1") {
+              selectedMode = "Boost";
+            }
+            currentTemp = setPointData.val;
+            targetTemp = int.parse(setPointData.val);
+            unit = setPointData.unit;
+            isPowerOn = setPointDataPower.val == "1";
+            isLoading = false;
+          }
+        });
       } else {
         setState(() => isLoading = false);
       }
@@ -423,7 +482,7 @@ bool is_power_update=false;
 
         // Schedule getDeviceData after 5 seconds
         _deviceDataTimer = Timer(const Duration(seconds: 5), () async {
-          is_power_update=true;
+          is_power_update = true;
           await getDeviceData();
         });
       } else {
@@ -768,7 +827,7 @@ bool is_power_update=false;
                                             ),
                                           ),
                                         );
-                                      }else{
+                                      } else {
                                         onTemperatureChanged(targetTemp - 1);
                                       }
                                     } else {
