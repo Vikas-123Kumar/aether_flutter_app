@@ -7,6 +7,7 @@ import 'package:untitled/NotificationScreen.dart';
 import 'package:untitled/assist/AssistScreen.dart';
 import 'package:untitled/authentication/NewLoginScreen.dart';
 import 'package:untitled/authentication/rest/APIService.dart';
+import 'package:untitled/device_details/HomeScreen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 
@@ -46,6 +47,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
   bool _smartNotificationEnabled = false;
   bool _isLoadingSettings = true;
   bool _isUpdatingSetting = false;
+
   @override
   void initState() {
     super.initState();
@@ -210,7 +212,9 @@ class _ProfileScreenState extends State<NewProfileScreen> {
   void moveConnect() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const ConnectScreen()),
+      MaterialPageRoute(
+        builder: (_) => const ConnectScreen(fromNoDevice: true),
+      ),
     );
   }
 
@@ -222,13 +226,10 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       bool connected = await InternetService().hasInternet();
 
       if (!connected) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No Internet Connection")),
-        );
-        return {
-          "success": false,
-          "message": "No Internet Connection",
-        };
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("No Internet Connection")));
+        return {"success": false, "message": "No Internet Connection"};
       }
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString("token") ?? "";
@@ -286,6 +287,155 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     } catch (e) {
       print("Error: $e");
       showSnack(context, "Something went wrong", "fail");
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteDevice() async {
+    try {
+      bool connected = await InternetService().hasInternet();
+
+      if (!connected) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("No Internet Connection")));
+        return {"success": false, "message": "No Internet Connection"};
+      }
+      final prefs = await SharedPreferences.getInstance();
+      String token = prefs.getString("token") ?? "";
+
+      final response = await http.delete(
+        Uri.parse("https://aetherone.com.au/api/v1/deleteDevice"),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({"device_id": deviceId}),
+      );
+      final data = jsonDecode(response.body);
+      return {
+        "success": response.statusCode == 200,
+        "message": data["message"] ?? "Unknown error",
+      };
+    } catch (e) {
+      return {"success": false, "message": e.toString()};
+    }
+  }
+
+  Future<void> showDeleteConfirmation() async {
+    final bool? shouldDelete = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              color: const Color(0xFF162B45),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: Colors.white10, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.35),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(15),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.red,
+                      size: 40,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "Remove Device?",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    "Are you sure you want to remove this device from your account?",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 15, color: Colors.white),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            "Cancel",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text("Remove"),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (shouldDelete != true) return;
+
+    final result = await deleteDevice();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(result["message"])));
+
+    if (result["success"]) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        (route) => false,
+      );
     }
   }
 
@@ -356,6 +506,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       setState(() => _isUpdatingSetting = false);
     }
   }
+
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -397,9 +548,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const NotificationScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const NotificationScreen()),
                 );
               },
               icon: const Icon(
@@ -463,13 +612,15 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child:
-                        Container(
+                        child: Container(
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
                             color: const Color(0xFF132A4C),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFF2A4B73), width: 1),
+                            border: Border.all(
+                              color: const Color(0xFF2A4B73),
+                              width: 1,
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -498,7 +649,8 @@ class _ProfileScreenState extends State<NewProfileScreen> {
 
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const Text(
                                           "Smart Notifications",
@@ -523,17 +675,19 @@ class _ProfileScreenState extends State<NewProfileScreen> {
 
                                   _isUpdatingSetting
                                       ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
                                       : Switch(
-                                    value: _smartNotificationEnabled,
-                                    activeColor: Colors.blue,
-                                    onChanged: (value) async {
-                                      _toggleSmartNotification(value);
-                                    },
-                                  ),
+                                          value: _smartNotificationEnabled,
+                                          activeColor: Colors.blue,
+                                          onChanged: (value) async {
+                                            _toggleSmartNotification(value);
+                                          },
+                                        ),
                                 ],
                               ),
                             ],
@@ -562,18 +716,18 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                       ),
                       icon: _isLoading
                           ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.redAccent,
-                        ),
-                      )
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.redAccent,
+                              ),
+                            )
                           : const Icon(
-                        Icons.logout_rounded,
-                        color: Colors.redAccent,
-                        size: 18,
-                      ),
+                              Icons.logout_rounded,
+                              color: Colors.redAccent,
+                              size: 18,
+                            ),
                       label: Text(
                         _isLoading ? "" : "Sign out",
                         style: const TextStyle(
@@ -598,21 +752,21 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                       ),
                       child: _isLoading
                           ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
                           : const Text(
-                        "Update Wifi Credential",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                              "Update Wifi Credential",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 15),
@@ -648,21 +802,65 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                         ),
                         child: _isLoading
                             ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
                             : const Text(
-                          "Sync Device",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                                "Sync Device",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                    ),
+                  if (deviceId.isNotEmpty)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          bool connected = await InternetService()
+                              .hasInternet();
+
+                          if (!connected) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("No Internet Connection"),
+                              ),
+                            );
+                            return;
+                          }
+                          showDeleteConfirmation();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                "Remove Device",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                 ],

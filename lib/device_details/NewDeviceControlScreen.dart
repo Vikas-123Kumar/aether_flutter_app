@@ -156,6 +156,9 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           final setPointDataPower = deviceData.firstWhere(
             (item) => item.itemid == "1",
           );
+          final setPointDatamiddle = deviceData.firstWhere(
+            (item) => item.itemid == "15",
+          );
           if (!mode_update_first) {
             mode_update_first = true;
             if (setPointDataMode.val == "2") {
@@ -177,8 +180,8 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
             }
           }
           pre_mode = selectedMode;
+          currentTemp = setPointDatamiddle.val;
           if (!change_target) {
-            currentTemp = setPointData.val;
             targetTemp = int.parse(setPointData.val);
           }
           unit = setPointData.unit;
@@ -215,6 +218,11 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         final decoded = jsonDecode(response.body);
         final List dataList = decoded['data']['data'];
         print("mode click {$ismodeclick}");
+        final setPointDatamiddle = deviceData.firstWhere(
+          (item) => item.itemid == "15",
+        );
+        currentTemp = setPointDatamiddle.val;
+        print("middle_temp $currentTemp");
         if (ismodeclick) {
           setState(() {
             deviceData = dataList
@@ -223,10 +231,10 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
             final setPointData = deviceData.firstWhere(
               (item) => item.itemid == "3",
             );
+
             final setPointDataPower = deviceData.firstWhere(
               (item) => item.itemid == "1",
             );
-            currentTemp = setPointData.val;
             targetTemp = int.parse(setPointData.val);
             unit = setPointData.unit;
             isPowerOn = setPointDataPower.val == "1";
@@ -275,6 +283,9 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           final setPointDataPower = deviceData.firstWhere(
             (item) => item.itemid == "1",
           );
+          final setPointDatamiddle = deviceData.firstWhere(
+            (item) => item.itemid == "15",
+          );
           if (!ismodeclick && !change_target) {
             if (setPointDataMode.val == "2") {
               selectedMode = "Eco";
@@ -283,7 +294,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
             } else if (setPointDataMode.val == "1") {
               selectedMode = "Boost";
             }
-            currentTemp = setPointData.val;
+            currentTemp = setPointDatamiddle.val;
             targetTemp = int.parse(setPointData.val);
             unit = setPointData.unit;
             isPowerOn = setPointDataPower.val == "1";
@@ -360,7 +371,9 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         if (devices.isEmpty) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const ConnectScreen()),
+            MaterialPageRoute(
+              builder: (_) => const ConnectScreen(fromNoDevice: false),
+            ),
           );
           return;
         }
@@ -503,7 +516,6 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     // Update UI immediately
     setState(() {
       targetTemp = value;
-      currentTemp = value.toString();
     });
 
     // Cancel previous timer

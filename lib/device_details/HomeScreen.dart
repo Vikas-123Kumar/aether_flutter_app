@@ -41,7 +41,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return [
         const Installerlist(),
         InstallerFulllist(),
-        ConnectScreen(),
+        ConnectScreen(fromNoDevice: false,),
         const Installerprofile(),
       ];
     }

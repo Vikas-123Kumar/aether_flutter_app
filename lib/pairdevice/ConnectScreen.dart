@@ -11,8 +11,12 @@ import 'package:untitled/pairdevice/ConnectedScreen.dart';
 import '../authentication/rest/APIService.dart';
 
 class ConnectScreen extends StatefulWidget {
-  const ConnectScreen({super.key});
+  final bool fromNoDevice;
 
+  const ConnectScreen({
+    super.key,
+    this.fromNoDevice = false,
+  });
   @override
   State<ConnectScreen> createState() => _ConnectScreenState();
 }
@@ -26,6 +30,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController ssidController = TextEditingController();
   String ssid = "";
+  final Color cardBg = const Color(0xFF0F1726);
 
   @override
   void initState() {
@@ -111,7 +116,10 @@ class _ConnectScreenState extends State<ConnectScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("OK", style: TextStyle(color: Color(0xFF00B4D8))),
+              child: const Text(
+                "OK",
+                style: TextStyle(color: Color(0xFF00B4D8)),
+              ),
             ),
           ],
         ),
@@ -151,7 +159,10 @@ class _ConnectScreenState extends State<ConnectScreen> {
                 Navigator.pop(context);
                 openAppSettings(); // Opens device settings for your app
               },
-              child: const Text("Open Settings", style: TextStyle(color: Color(0xFF00B4D8))),
+              child: const Text(
+                "Open Settings",
+                style: TextStyle(color: Color(0xFF00B4D8)),
+              ),
             ),
           ],
         ),
@@ -191,8 +202,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
     String currentRole = prefs.getString("current_role") ?? "";
 
     try {
-      String apiEndpoint =
-      currentRole == "Installer" ? "syncDeviceByInstaller" : "syncDevice";
+      String apiEndpoint = currentRole == "Installer"
+          ? "syncDeviceByInstaller"
+          : "syncDevice";
 
       final response = await ApiService().post(apiEndpoint, {
         "device_id": deviceId,
@@ -208,7 +220,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
         _progress = 1.0;
       });
 
-      await Future.delayed(const Duration(milliseconds: 300)); // Brief pause to complete progress bar animation
+      await Future.delayed(
+        const Duration(milliseconds: 300),
+      ); // Brief pause to complete progress bar animation
 
       if (!mounted) return;
 
@@ -218,7 +232,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
       });
 
       if (success == true || message.contains("already sync")) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -226,7 +242,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } catch (e) {
       print("Sync Error => $e");
@@ -234,7 +252,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Sync Error: $e")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Sync Error: $e")));
     }
   }
 
@@ -259,12 +279,38 @@ class _ConnectScreenState extends State<ConnectScreen> {
         titleSpacing: 15,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leadingWidth: widget.fromNoDevice ? 56 : 0,
+        leading: widget.fromNoDevice
+            ? Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: cardBg,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(
+                Icons.arrow_back,
+                color: Colors.white,
+                size: 18,
+              ),
+              onPressed: _isLoading
+                  ? null
+                  : () => Navigator.pop(context),
+            ),
+          ),
+        )
+            : null,
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               "Connect",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
             ),
             Text(
               "System notifications & diagnostics",
@@ -291,23 +337,32 @@ class _ConnectScreenState extends State<ConnectScreen> {
                       Container(
                         padding: const EdgeInsets.all(16.0),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF00B4D8),
+                          color: const Color(0xFF39AEFB),
                           borderRadius: BorderRadius.circular(12.0),
                         ),
-                        child: const Text("A", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          "A",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 16),
                       const Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("Aether Home", style: TextStyle(color: Colors.white, fontSize: 16)),
-                            SizedBox(height: 8),
-                            Row(
-                              children: [
-                                SizedBox(width: 6),
-                              ],
+                            Text(
+                              "Aether Home",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
                             ),
+                            SizedBox(height: 8),
+                            Row(children: [SizedBox(width: 6)]),
                           ],
                         ),
                       ),
@@ -315,13 +370,37 @@ class _ConnectScreenState extends State<ConnectScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text("Set Wi-Fi Details", style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                const Text(
+                  "Set Wi-Fi Details",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
                 const SizedBox(height: 12),
-                _buildTextField(controller: _serialnumberController, hint: "Enter Serial Number", icon: Icons.device_thermostat),
+                _buildTextField(
+                  controller: _serialnumberController,
+                  hint: "Enter Serial Number",
+                  icon: Icons.device_thermostat,
+                ),
                 const SizedBox(height: 12),
-                _buildTextField(controller: ssidController, hint: "SSID", icon: Icons.wifi),
+                _buildTextField(
+                  controller: ssidController,
+                  hint: "SSID",
+                  icon: Icons.wifi,
+                ),
                 const SizedBox(height: 16),
-                const Text("PASSWORD", style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                const Text(
+                  "PASSWORD",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _passwordController,
@@ -331,19 +410,41 @@ class _ConnectScreenState extends State<ConnectScreen> {
                     filled: true,
                     fillColor: const Color(0xFF161F33),
                     hintText: "Enter Wi-Fi password",
-                    hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
-                    prefixIcon: const Icon(Icons.lock, color: Color(0xFF00B4D8), size: 18),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16.0), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    hintStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 13,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.lock,
+                      color: Color(0xFF39AEFB),
+                      size: 18,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16.0),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                      horizontal: 16,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 const Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.lock_outline, color: Color(0xFF00B4D8), size: 14),
+                    Icon(
+                      Icons.lock_outline,
+                      color: Color(0xFF39AEFB),
+                      size: 14,
+                    ),
                     SizedBox(width: 8),
-                    Expanded(child: Text("Your password is sent over an encrypted Wi-Fi link directly to your device. We never store it.", style: TextStyle(color: Colors.grey, fontSize: 9))),
+                    Expanded(
+                      child: Text(
+                        "Your password is sent over an encrypted Wi-Fi link directly to your device. We never store it.",
+                        style: TextStyle(color: Colors.grey, fontSize: 9),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 32),
@@ -353,10 +454,19 @@ class _ConnectScreenState extends State<ConnectScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : sendWifiCredentials,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00B4D8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                      backgroundColor: const Color(0xFF39AEFB),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.0),
+                      ),
                     ),
-                    child: const Text("Connect device", style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      "Connect device",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -434,17 +544,24 @@ class _ConnectScreenState extends State<ConnectScreen> {
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String hint, required IconData icon}) {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+  }) {
     return TextField(
       controller: controller,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: Icon(icon, color: const Color(0xFF00B4D8), size: 18),
+        prefixIcon: Icon(icon, color: const Color(0xFF39AEFB), size: 18),
         hintStyle: const TextStyle(color: Colors.grey),
         filled: true,
         fillColor: const Color(0xFF121A2F),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
       ),
     );
   }

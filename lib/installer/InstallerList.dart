@@ -398,7 +398,7 @@ class _DashboardScreenState extends State<Installerlist> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const ConnectScreen()),
+          MaterialPageRoute(builder: (context) => const ConnectScreen(fromNoDevice: true,)),
         );
       },
       child: Container(

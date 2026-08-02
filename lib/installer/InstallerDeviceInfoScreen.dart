@@ -100,6 +100,9 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
           final setPointDataMode = deviceData.firstWhere(
             (item) => item.itemid == "2",
           );
+          final setPointDataModemiddle = deviceData.firstWhere(
+            (item) => item.itemid == "15",
+          );
           final setPointDataPower = deviceData.firstWhere(
             (item) => item.itemid == "1",
           );
@@ -115,7 +118,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
             selectedMode = "Boost";
           }
 
-          currentTemp = setPointData.val;
+          currentTemp = setPointDataModemiddle.val;
           targetTemp = int.parse(setPointData.val);
           unit = setPointData.unit;
           isPowerOn = setPointDataPower.val == "1";

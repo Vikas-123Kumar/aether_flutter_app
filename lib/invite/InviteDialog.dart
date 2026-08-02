@@ -111,43 +111,49 @@ class _InviteDialogState extends State<InviteDialog> {
 
             const SizedBox(height: 16),
 
-            /// Permission
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Permission",
-                style: TextStyle(color: Colors.white70),
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _permissionCard(
-                    title: "Can control",
-                    subtitle: "Adjust temp, modes & timers",
-                    value: "control",
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _permissionCard(
-                    title: "View only",
-                    subtitle: "See status & alerts \n",
-                    value: "view",
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
+            // /// Permission
+            // const Align(
+            //   alignment: Alignment.centerLeft,
+            //   child: Text(
+            //     "Permission",
+            //     style: TextStyle(color: Colors.white70),
+            //   ),
+            // ),
+            // const SizedBox(height: 10),
+            //
+            // Row(
+            //   children: [
+            //     Expanded(
+            //       child: _permissionCard(
+            //         title: "Can control",
+            //         subtitle: "Adjust temp, modes & timers",
+            //         value: "control",
+            //       ),
+            //     ),
+            //     const SizedBox(width: 10),
+            //     Expanded(
+            //       child: _permissionCard(
+            //         title: "View only",
+            //         subtitle: "See status & alerts \n",
+            //         value: "view",
+            //       ),
+            //     ),
+            //   ],
+            // ),
+            //
+            // const SizedBox(height: 20),
 
             /// Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                   onPressed: () => Navigator.pop(context),
                   child: const Text(
                     "Cancel",
@@ -172,7 +178,7 @@ class _InviteDialogState extends State<InviteDialog> {
                             color: Colors.white,
                           ),
                         )
-                      : const Text("Send invite"),
+                      : const Text("Send invite", style: TextStyle(color: Colors.white),),
                 ),
               ],
             ),

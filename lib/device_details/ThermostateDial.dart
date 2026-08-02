@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
+
 class ThermostatDial extends StatelessWidget {
   final String temperature;
   final Color solidColor;
@@ -25,15 +26,25 @@ class ThermostatDial extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                "MAINTAINING",
-                style: TextStyle(color: Colors.white54, fontSize: 10, letterSpacing: 3),
+                "Current\nTemperature",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: 13,
+                  fontWeight:FontWeight.bold ,
+                  letterSpacing: 3,
+                ),
               ),
               const SizedBox(height: 10),
               // Optional: You can use a ShaderMask here if you want the text itself to be a gradient
               // For now, we use the solid bright color so it stays readable
               Text(
                 "${temperature}°C",
-                style: TextStyle(color: solidColor, fontSize: 54, fontWeight: FontWeight.bold,),
+                style: TextStyle(
+                  color: solidColor,
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
             ],
@@ -71,14 +82,22 @@ class ThermostatPainter extends CustomPainter {
 
     // The track starts at 2.5 radians and sweeps for 4.6 radians
     canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius), 2.5, 4.6, false, trackPaint);
+      Rect.fromCircle(center: center, radius: radius),
+      2.5,
+      4.6,
+      false,
+      trackPaint,
+    );
 
-    double numericTemp = double.tryParse(value.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+    double numericTemp =
+        double.tryParse(value.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
     double sweep = (numericTemp / 100) * 4.6;
 
     // 3. Setup the Glow Paint
     final glowPaint = Paint()
-      ..color = gradientColors.isNotEmpty ? gradientColors.first.withOpacity(0.4) : solidColor.withOpacity(0.4)
+      ..color = gradientColors.isNotEmpty
+          ? gradientColors.first.withOpacity(0.4)
+          : solidColor.withOpacity(0.4)
       ..strokeWidth = 18
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
@@ -90,7 +109,9 @@ class ThermostatPainter extends CustomPainter {
       ..shader = SweepGradient(
         startAngle: 2.5, // Matches the start of your arc
         endAngle: 2.5 + 4.6, // Matches the end of your arc track
-        colors: gradientColors.length >= 2 ? gradientColors : [solidColor, solidColor],
+        colors: gradientColors.length >= 2
+            ? gradientColors
+            : [solidColor, solidColor],
         // Transform rotates the sweep to start at the right position
         transform: GradientRotation(0),
       ).createShader(Rect.fromCircle(center: center, radius: radius))
@@ -100,9 +121,19 @@ class ThermostatPainter extends CustomPainter {
 
     // 5. Draw the Colored Arcs
     canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius), 2.5, sweep, false, glowPaint);
+      Rect.fromCircle(center: center, radius: radius),
+      2.5,
+      sweep,
+      false,
+      glowPaint,
+    );
     canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius), 2.5, sweep, false, progressPaint);
+      Rect.fromCircle(center: center, radius: radius),
+      2.5,
+      sweep,
+      false,
+      progressPaint,
+    );
 
     // 6. Draw the Tick Marks
     for (int i = 0; i < 22; i++) {
@@ -115,7 +146,13 @@ class ThermostatPainter extends CustomPainter {
         center.dx + (radius + 18) * cos(angle),
         center.dy + (radius + 18) * sin(angle),
       );
-      canvas.drawLine(p1, p2, Paint()..color = Colors.white24..strokeWidth = 2);
+      canvas.drawLine(
+        p1,
+        p2,
+        Paint()
+          ..color = Colors.white24
+          ..strokeWidth = 2,
+      );
     }
 
     // 7. Draw the White Knob
