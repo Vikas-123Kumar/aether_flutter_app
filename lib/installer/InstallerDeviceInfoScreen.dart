@@ -49,6 +49,15 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
     getDeviceData(); // Fetch live data on init
   }
 
+
+  String formatTemperature(String value) {
+    final temp = double.tryParse(value);
+    if (temp == null) return value;
+
+    return temp == temp.roundToDouble()
+        ? temp.toInt().toString()
+        : temp.toStringAsFixed(1);
+  }
   // --- API METHODS (From your original code) ---
 
   DeviceDataModel? getItem(String alias) {
@@ -623,7 +632,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
             _buildGridCard(
               Icons.thermostat,
               "TANK",
-              "$currentTemp$unit",
+              "${formatTemperature(currentTemp)}$unit",
               "target $targetTemp°",
               neonBlue,
             ),

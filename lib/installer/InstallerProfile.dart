@@ -4,12 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 // Make sure to keep your own imports here
-// import 'package:untitled/DeviceInformations.dart';
-// import 'package:untitled/authentication/NewLoginScreen.dart';
-// import 'package:untitled/authentication/rest/APIService.dart';
-// import '../InternetService.dart';
-// import '../common_function/SnackBar.dart';
-// import '../pairdevice/ConnectScreen.dart';
+import 'package:untitled/DeviceInformations.dart';
+import 'package:untitled/authentication/NewLoginScreen.dart';
+import 'package:untitled/authentication/rest/APIService.dart';
+import '../InternetService.dart';
+import '../common_function/SnackBar.dart';
+import '../pairdevice/ConnectScreen.dart';
 
 class Installerprofile extends StatefulWidget {
   const Installerprofile({super.key});
@@ -20,7 +20,6 @@ class Installerprofile extends StatefulWidget {
 
 class _ProfileScreenState extends State<Installerprofile> {
   bool _isLoading = false;
-
   // API Data Variables
   String name = "";
   String role = "";
@@ -29,7 +28,6 @@ class _ProfileScreenState extends State<Installerprofile> {
   String mobile = "";
   String companyName = "";
   String abn = "62 184 339 220"; // Hardcoded as it's not in the provided API
-
   // Example device ID (Keep your original logic)
   String deviceId = "dummy_device_id";
 
@@ -92,19 +90,163 @@ class _ProfileScreenState extends State<Installerprofile> {
   }
 
   Future<void> showLogoutDialog(BuildContext context) {
-    // Keep your existing logout dialog logic here
     return showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text("Logout"),
-          content: const Text("Are you sure?"),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Logout")),
-          ],
-        )
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF162B45),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white10, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.35),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  height: 70,
+                  width: 70,
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    color: Colors.redAccent,
+                    size: 34,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  "Logout",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  "Are you sure you want to logout from your account?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 15,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(color: Colors.grey.shade600),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text(
+                          "Cancel",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          logout();
+                        },
+                        child: const Text(
+                          "Logout",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+
+                        ),
+
+                      ),
+
+                    ),
+
+                  ],
+
+                ),
+
+              ],
+
+            ),
+
+          ),
+
+        );
+      },
+
     );
+  }
+
+  Future<void> logout() async {
+    final api = ApiService();
+    try {
+      bool connected = await InternetService().hasInternet();
+      if (!connected) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("No Internet Connection")));
+        return;
+      }
+      final response = await api.post("logout", {});
+      final data = response.data;
+      if (data["success"] == true) {
+        showSnack(context, data["message"], "success");
+        final prefs = await SharedPreferences.getInstance();
+// ✅ CLEAR TOKEN
+        await prefs.remove("token");
+        await prefs.clear(); // optional (clears all saved data)
+// ✅ NAVIGATE TO LOGIN
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => NewLoginScreen()),
+              (route) => false,
+        );
+      } else {
+        showSnack(context, data["message"], "fail");
+      }
+    } catch (e) {
+      print("Error: $e");
+      showSnack(context, "Something went wrong", "fail");
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => NewLoginScreen()),
+      );
+    }
   }
 
   @override
@@ -230,7 +372,8 @@ class _ProfileScreenState extends State<Installerprofile> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 18),
+                icon: const Icon(
+                    Icons.logout_rounded, color: Colors.redAccent, size: 18),
                 label: const Text(
                   "Sign out",
                   style: TextStyle(
@@ -349,7 +492,8 @@ class _ProfileScreenState extends State<Installerprofile> {
     );
   }
 
-  Widget _buildInfoTile({required String label, required String value, IconData? icon}) {
+  Widget _buildInfoTile(
+      {required String label, required String value, IconData? icon}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(

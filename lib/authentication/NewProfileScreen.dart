@@ -35,7 +35,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
   String firstLetter = "";
   String mobile = "";
   List<FamilyMember> familyMembers = [];
-  bool isFamilyLoading = true;
+  bool isFamilyLoading = false;
   bool isLoading = false;
   String deviceId = DeviceInformations.selectedDeviceId;
   String installerName = "";
@@ -151,12 +151,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
   }
 
   Future<void> _fetchProfile() async {
-    setState(() {
-      _isLoading = true;
-    });
-
     const String apiUrl = 'https://aetherone.com.au/api/v1/profile';
-
     try {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString("token");
@@ -579,11 +574,9 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                       letterSpacing: 1,
                     ),
                   ),
-                  _buildContactDetails(name, "Full Name"),
-                  const SizedBox(height: 4),
-                  _buildContactDetails(email, "Email"),
-                  const SizedBox(height: 4),
-                  _buildContactDetails(mobile, "Mobile No."),
+                  const SizedBox(height: 10),
+                  _buildContactSection(name: name,email: email,mobile: mobile),
+
                   const SizedBox(height: 4),
                   _buildFamilyAndGuests(),
                   const SizedBox(height: 20),
@@ -946,7 +939,94 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       ),
     );
   }
+  Widget _buildContactSection({
+    required String name,
+    required String email,
+    required String mobile,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+            // MAIN CONTAINER HOLDING ALL ITEMS
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF101726), // Very dark blue/grey background
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          child: Column(
+            children: [
+              _buildDetailRow(name, "FULL NAME", Icons.person_outline),
+              _buildDivider(),
+              _buildDetailRow(email, "EMAIL", Icons.email_outlined),
+              _buildDivider(),
+              _buildDetailRow(mobile, "MOBILE NO.", Icons.phone_android_outlined),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
+  Widget _buildDetailRow(String value, String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Row(
+        children: [
+          // LEADING ICON CONTAINER
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon, // Dynamic icon applied here
+              color: Colors.lightBlueAccent,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 16),
+
+          // TEXT DETAILS
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+// Custom divider to match the faint lines in the design
+  Widget _buildDivider() {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      color: Colors.white.withOpacity(0.05), // Faint separation line
+    );
+  }
   Widget _buildContactDetails(String name, String title1) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1023,91 +1103,209 @@ class _ProfileScreenState extends State<NewProfileScreen> {
             ),
           ],
         ),
-
         const SizedBox(height: 6),
-
         Container(
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF161F33),
+            color: const Color(0xFF101726), // Dark background matching the image
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
           ),
-
           child: isFamilyLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(child: CircularProgressIndicator()),
+          )
               : familyMembers.isEmpty
-              ? const Center(
-                  child: Text(
-                    "No family members found",
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                )
+              ? const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(
+              child: Text(
+                "No family members found",
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+          )
               : Column(
-                  children: List.generate(familyMembers.length, (index) {
-                    final member = familyMembers[index];
+            children: List.generate(familyMembers.length, (index) {
+              final member = familyMembers[index];
+              final isOwner = member.role.toLowerCase() == 'owner';
 
-                    return Column(
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-
-                          leading: CircleAvatar(
-                            backgroundColor: const Color(0xFF162544),
+                        // LEADING AVATAR (Rounded Square)
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: isOwner
+                                ? const LinearGradient(
+                              colors: [
+                                Color(0xFF5AB2FF),
+                                Color(0xFF3282FF)
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                                : null,
+                            color: isOwner
+                                ? null
+                                : const Color(0xFF1E2638), // Dark grey for guests
+                          ),
+                          child: Center(
                             child: Text(
                               member.name.isNotEmpty
                                   ? member.name[0].toUpperCase()
                                   : "",
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
-
-                          title: Text(
-                            member.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-
-                          subtitle: Text(
-                            member.email,
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 10,
-                            ),
-                          ),
-
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildRoleTag(member.role),
-                              const SizedBox(width: 12),
-                              GestureDetector(
-                                onTap: () {
-                                  _showDeleteDialog(member);
-                                },
-                                child: const Icon(
-                                  Icons.delete_outline,
-                                  color: Colors.grey,
-                                  size: 18,
-                                ),
+                              style: TextStyle(
+                                color: isOwner
+                                    ? Colors.black87
+                                    : Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
                               ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+
+                        // MIDDLE TEXT SECTION
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Name and "(you)" if owner
+                              Row(
+                                children: [
+                                  Text(
+                                    member.name,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  // if (isOwner)
+                                  //   const Text(
+                                  //     " (you)",
+                                  //     style: TextStyle(
+                                  //       color: Colors.grey,
+                                  //       fontSize: 14,
+                                  //     ),
+                                  //   ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+
+                              // Subtitles based on role
+                              if (isOwner)
+                                Row(
+                                  children: [
+                                    const Icon(Icons.ac_unit, // Replace with your exact icon
+                                        color: Color(0xFFF6A83E),
+                                        size: 14),
+                                    const SizedBox(width: 4),
+                                    const Text(
+                                      "Owner - full access",
+                                      style: TextStyle(
+                                        color: Color(0xFFF6A83E), // Golden orange
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              else
+                                Column(
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      member.email,
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    // const SizedBox(height: 8),
+                                    // _buildGuestRoleTag(member.role),
+                                  ],
+                                ),
                             ],
                           ),
                         ),
 
-                        if (index != familyMembers.length - 1)
-                          const Divider(color: Colors.white10),
+                        // TRAILING DELETE ICON (Hidden if owner)
+                        if (!isOwner) ...[
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: () {
+                              // _showDeleteDialog(member);
+                            },
+                            child: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.grey,
+                              size: 22,
+                            ),
+                          ),
+                        ],
                       ],
-                    );
-                  }),
-                ),
+                    ),
+                  ),
+
+                  // Divider (Do not show after the last item)
+                  if (index != familyMembers.length - 1)
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Colors.white.withOpacity(0.05),
+                    ),
+                ],
+              );
+            }),
+          ),
         ),
       ],
     );
   }
 
+// Custom tag builder to match the blue "Can control" pill from the image
+  Widget _buildGuestRoleTag(String role) {
+    // You can add logic here to display different text based on member.role
+    String displayRole = role.toLowerCase() == 'control' ? 'Can control' : role;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0C2442), // Dark blue background for the tag
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.ac_unit, // Replace with your exact icon
+            color: Color(0xFF39AEFB),
+            size: 12,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            displayRole,
+            style: const TextStyle(
+              color: Color(0xFF39AEFB),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   void _showDeleteDialog(FamilyMember member) {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 

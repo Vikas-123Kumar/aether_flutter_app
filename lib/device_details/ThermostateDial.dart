@@ -14,6 +14,15 @@ class ThermostatDial extends StatelessWidget {
     required this.gradientColors,
   });
 
+  String formatTemperature(String value) {
+    final temp = double.tryParse(value);
+    if (temp == null) return value;
+
+    return temp == temp.roundToDouble()
+        ? temp.toInt().toString()
+        : temp.toStringAsFixed(1);
+  }
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -31,7 +40,7 @@ class ThermostatDial extends StatelessWidget {
                 style: TextStyle(
                   color: Colors.white54,
                   fontSize: 13,
-                  fontWeight:FontWeight.bold ,
+                  fontWeight: FontWeight.bold,
                   letterSpacing: 3,
                 ),
               ),
@@ -39,7 +48,7 @@ class ThermostatDial extends StatelessWidget {
               // Optional: You can use a ShaderMask here if you want the text itself to be a gradient
               // For now, we use the solid bright color so it stays readable
               Text(
-                "${temperature}°C",
+                "${formatTemperature(temperature)}°C",
                 style: TextStyle(
                   color: solidColor,
                   fontSize: 48,

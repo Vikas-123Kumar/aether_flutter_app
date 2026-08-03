@@ -31,7 +31,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   String mode = "ECO";
   bool isLoading = false;
   bool isPowerOn = false;
-  bool isCheckingDevices = true;
+  bool isCheckingDevices = false;
   List<DeviceDataModel> deviceData = [];
   bool isDeviceActive = false;
   String device_name = "";
@@ -54,7 +54,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   String timezone = "";
   bool change_target = false;
   bool is_power_update = false;
-
+  bool is_can_control = true;
   String pre_mode = "", current_mode = "", coming_mode = "";
 
   // Design Colors
@@ -113,6 +113,19 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     } catch (e) {
       return null;
     }
+  }
+
+  String toTitleCase(String text) {
+    if (text.isEmpty) return text;
+
+    return text
+        .split(' ')
+        .map(
+          (word) => word.isEmpty
+              ? word
+              : word[0].toUpperCase() + word.substring(1).toLowerCase(),
+        )
+        .join(' ');
   }
 
   @override
@@ -407,11 +420,19 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
   Future<void> updateMode(String mode) async {
     ismodeclick = true;
-
+    if (!is_can_control) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text("You don't have access to control the device."),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      return;
+    }
     if (!isDeviceActive) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Device is offline")));
+      showSnacBar();
       return;
     }
     if (_isProcessing) return;
@@ -456,12 +477,22 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
   Future<void> updatePower() async {
     ismodeclick = false;
-    if (!isDeviceActive) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Device is offline")));
+    if (!is_can_control) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text("You don't have access to control the device."),
+            duration: Duration(seconds: 2),
+          ),
+        );
       return;
     }
+    if (!isDeviceActive) {
+      showSnacBar();
+      return;
+    }
+
     if (_isProcessing) return; // Block fast multi-clicks
     //_startCooldown();
 
@@ -533,11 +564,20 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     });
   }
 
+  void showSnacBar() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text("Device is offline"),
+          duration: Duration(seconds: 2),
+        ),
+      );
+  }
+
   Future<void> updateTemperature(int value) async {
     if (!isDeviceActive) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Device is offline")));
+      showSnacBar();
       return;
     }
     String device_id = DeviceInformations.act_device_id;
@@ -646,7 +686,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      "AETHER SMART",
+                                      "Powered by",
                                       style: TextStyle(
                                         color: textGrey,
                                         fontSize: 10,
@@ -656,7 +696,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      device_name.isEmpty ? "" : device_name,
+                                      "aetherSmart",
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
@@ -801,14 +841,21 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                       );
                                       return;
                                     }
+                                    if (!is_can_control) {
+                                      ScaffoldMessenger.of(context)
+                                        ..hideCurrentSnackBar()
+                                        ..showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              "You don't have access to control the device.",
+                                            ),
+                                            duration: Duration(seconds: 2),
+                                          ),
+                                        );
+                                      return;
+                                    }
                                     if (!isDeviceActive) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text("Device is offline"),
-                                        ),
-                                      );
+                                      showSnacBar();
                                       return;
                                     }
                                     setState(() {
@@ -947,14 +994,21 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                       );
                                       return;
                                     }
+                                    if (!is_can_control) {
+                                      ScaffoldMessenger.of(context)
+                                        ..hideCurrentSnackBar()
+                                        ..showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              "You don't have access to control the device.",
+                                            ),
+                                            duration: Duration(seconds: 2),
+                                          ),
+                                        );
+                                      return;
+                                    }
                                     if (!isDeviceActive) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text("Device is offline"),
-                                        ),
-                                      );
+                                     showSnacBar();
                                       return;
                                     }
                                     setState(() {
@@ -1098,7 +1152,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                               icon: getWeatherIcon(weatherList[0]["condition"]),
                               title: "OUTSIDE - ${location.toUpperCase()}",
                               subtitle:
-                                  "${weatherList[0]["condition"]} • ${weatherList[0]["precipitation_probability_max"]}% rain • Wind ${weatherList[0]["wind_gusts_10m_max"]} km/h",
+                                  "${toTitleCase(weatherList[0]["condition"])} • ${weatherList[0]["precipitation_probability_max"]}% rain • Wind ${weatherList[0]["wind_gusts_10m_max"]} km/h",
                               trailing: const Icon(
                                 Icons.arrow_forward_ios_rounded,
                                 color: Colors.white70,

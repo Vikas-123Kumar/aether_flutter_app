@@ -145,7 +145,12 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
         selectedDays.add(_dayNameMap[_days[i]]!);
       }
     }
-
+    if (scheduleController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please add schedule name")),
+      );
+      return;
+    }
     if (selectedDays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select at least one day")),
@@ -537,7 +542,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
 
                 // Heating Modes with Dynamic Mode Colors
                 Row(
-                  children: ['Eco', 'Boost', 'Comfort'].map((mode) {
+                  children: ['Eco','Comfort', 'Boost'].map((mode) {
                     final isSelected = _selectedMode == mode;
                     final activeColor = modeColors[mode]!;
                     final selectedBg = modeSelectedBgs[mode]!;

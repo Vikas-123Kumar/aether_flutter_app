@@ -67,13 +67,13 @@ class ScheduleItem {
     String mappedMode;
     switch (json['mode']) {
       case 0:
-        mappedMode = 'Eco';
-        break;
-      case 1:
         mappedMode = 'Comfort';
         break;
-      case 2:
+      case 1:
         mappedMode = 'Boost';
+        break;
+      case 2:
+        mappedMode = 'Eco';
         break;
       default:
         mappedMode =
@@ -255,8 +255,8 @@ class _ScheduleDashboardScreenState extends State<ScheduleDashboardScreen> {
   final Color highlightCardColor = const Color(0xFF162A45);
   final Color textGrey = const Color(0xFF8B9CB6);
   final Color accentBlue = const Color(0xFF38B6FF);
-
-  bool _isLoading = true;
+  bool is_can_control = true;
+  bool _isLoading = false;
   DashboardData? _data;
 
   @override
@@ -275,7 +275,6 @@ class _ScheduleDashboardScreenState extends State<ScheduleDashboardScreen> {
   }
 
   Future<void> _loadDashboardData() async {
-    setState(() => _isLoading = true);
     try {
       final data = await ApiService1.fetchSchedules();
       setState(() {
@@ -351,7 +350,8 @@ class _ScheduleDashboardScreenState extends State<ScheduleDashboardScreen> {
           ],
         ),
         actions: [
-          Padding(
+          if(is_can_control)
+            Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Container(
               width: 44,
@@ -605,52 +605,56 @@ class _ScheduleDashboardScreenState extends State<ScheduleDashboardScreen> {
 
                     return Dismissible(
                       key: Key(item.id.toString()),
-                      direction: DismissDirection.endToStart,
+
+                      // conditionally disable swipe-to-delete
+                      direction: is_can_control
+                          ? DismissDirection.endToStart
+                          : DismissDirection.none,
 
                       // 1. CONFIRMATION DIALOG FOR DELETE
                       confirmDismiss: (direction) async {
                         return await showDialog<bool>(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return AlertDialog(
-                                  backgroundColor: cardColor,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  title: const Text(
-                                    "Delete Schedule",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  content: Text(
-                                    "Are you sure you want to delete '${item.title}'?",
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              backgroundColor: cardColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              title: const Text(
+                                "Delete Schedule",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              content: Text(
+                                "Are you sure you want to delete '${item.title}'?",
+                                style: TextStyle(color: textGrey),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(false),
+                                  child: Text(
+                                    "Cancel",
                                     style: TextStyle(color: textGrey),
                                   ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(false),
-                                      child: Text(
-                                        "Cancel",
-                                        style: TextStyle(color: textGrey),
-                                      ),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(true),
+                                  child: const Text(
+                                    "Delete",
+                                    style: TextStyle(
+                                      color: Colors.redAccent,
                                     ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(true),
-                                      child: const Text(
-                                        "Delete",
-                                        style: TextStyle(
-                                          color: Colors.redAccent,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ) ??
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ) ??
                             false;
                       },
 
@@ -769,47 +773,6 @@ class _ScheduleDashboardScreenState extends State<ScheduleDashboardScreen> {
                                     0.3,
                                   ),
                                   onChanged: (val) async {
-                                    // Update UI immediately
-                                    // setState(() {
-                                    //   item.isActive = val;
-                                    // });
-                                    //
-                                    // // Make API Call
-                                    // bool success =
-                                    //     await ApiService1.toggleScheduleStatus(
-                                    //       item.id,
-                                    //       val,
-                                    //     );
-                                    //
-                                    // if (success) {
-                                    //   if (mounted) {
-                                    //     ScaffoldMessenger.of(
-                                    //       context,
-                                    //     ).showSnackBar(
-                                    //       const SnackBar(
-                                    //         content: Text(
-                                    //           "Schedule updated successfully.",
-                                    //         ),
-                                    //       ),
-                                    //     );
-                                    //   }
-                                    // } else {
-                                    //   // Revert UI if API fails
-                                    //   setState(() {
-                                    //     item.isActive = !val;
-                                    //   });
-                                    //   if (mounted) {
-                                    //     ScaffoldMessenger.of(
-                                    //       context,
-                                    //     ).showSnackBar(
-                                    //       const SnackBar(
-                                    //         content: Text(
-                                    //           "Failed to update schedule",
-                                    //         ),
-                                    //       ),
-                                    //     );
-                                    //   }
-                                    // }
                                   },
                                 ),
                               ],
