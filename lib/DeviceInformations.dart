@@ -7,5 +7,6 @@ class DeviceInformations {
   static String? selectedDeviceName;
   static String act_device_id="";
   static String is_online="";
+  static int is_device_access=0;
 
 }

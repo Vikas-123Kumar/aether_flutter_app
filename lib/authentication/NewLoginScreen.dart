@@ -57,12 +57,19 @@ class _LoginScreenState extends State<NewLoginScreen> {
       final data = response.data;
 
       if (data["success"] == true) {
-        showSnack(context, data["message"], "success");
+        showSnack(context, data["message"] ?? "Login successful", "success");
 
-        String token = data["token"];
-        int userId = data["user"]["id"];
-        String timezone = data["user"]["timezone"];
-        String company_name = data["user"]["company_name"] ?? "";
+        final user = data["user"] ?? {};
+
+        String token = data["token"]?.toString() ?? "";
+        int userId = user["id"] is int
+            ? user["id"]
+            : int.tryParse(user["id"]?.toString() ?? "0") ?? 0;
+
+        String timezone = user["timezone"]?.toString() ?? "";
+        String companyName = user["company_name"]?.toString() ?? "";
+        String currentRole = data["current_role"]?.toString() ?? "";
+
         ApiService().setToken(token);
 
         final prefs = await SharedPreferences.getInstance();
@@ -70,17 +77,21 @@ class _LoginScreenState extends State<NewLoginScreen> {
         await prefs.setString("token", token);
         await prefs.setInt("user_id", userId);
         await prefs.setString("timezone", timezone);
-        await prefs.setString("company_name", company_name);
-        await prefs.setString("current_role", data["current_role"]);
-        String role = data["current_role"];
-        print("User ID: $userId  $role");
+        await prefs.setString("company_name", companyName);
+        await prefs.setString("current_role", currentRole);
+
+        print("User ID: $userId  $currentRole");
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => DashboardScreen()),
         );
       } else {
-        // ❌ ERROR
-        showSnack(context, data["message"], "fail");
+        showSnack(
+          context,
+          data["message"]?.toString() ?? "Something went wrong",
+          "fail",
+        );
       }
     } catch (e) {
       print("Error: $e");

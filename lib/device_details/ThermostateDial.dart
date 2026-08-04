@@ -4,12 +4,14 @@ import 'dart:ui' as ui;
 
 class ThermostatDial extends StatelessWidget {
   final String temperature;
+  final int target;
   final Color solidColor;
   final List<Color> gradientColors;
 
   const ThermostatDial({
     super.key,
     required this.temperature,
+    required this.target,
     required this.solidColor,
     required this.gradientColors,
   });
@@ -38,7 +40,7 @@ class ThermostatDial extends StatelessWidget {
                 "Current\nTemperature",
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white54,
+                  color: Color(0xFF7C8A9E),
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 3,
@@ -54,6 +56,29 @@ class ThermostatDial extends StatelessWidget {
                   fontSize: 48,
                   fontWeight: FontWeight.bold,
                 ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "TARGET  ",
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  Text(
+                    "${target.toString()}*",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
             ],

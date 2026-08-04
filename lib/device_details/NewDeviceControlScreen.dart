@@ -54,7 +54,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   String timezone = "";
   bool change_target = false;
   bool is_power_update = false;
-  bool is_can_control = true;
+  bool is_can_control = false;
   String pre_mode = "", current_mode = "", coming_mode = "";
 
   // Design Colors
@@ -391,8 +391,10 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           return;
         }
         Map firstDevice = devices[0];
+        is_can_control = firstDevice["is_device_access"] == 1;
         DeviceInformations.selectedDeviceId = firstDevice["device_id"]
             .toString();
+        DeviceInformations.is_device_access = firstDevice["is_device_access"];
         DeviceInformations.selectedSerialNumber = firstDevice["serial_number"]
             .toString();
         DeviceInformations.selectedDeviceName = firstDevice["name"] ?? "";
@@ -811,6 +813,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                     /// 🔵 CIRCULAR DIAL
                     ThermostatDial(
                       temperature: currentTemp,
+                      target: targetTemp,
                       solidColor: activeSolidColor,
                       gradientColors: activeGradientColors,
                     ),
@@ -939,33 +942,34 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
                           /// Target Pill
                           Container(
-                            width: 120,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            width: 140, // Increased slightly to match the pill proportions
+                            padding: const EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
-                              color: cardColor,
-                              borderRadius: BorderRadius.circular(30),
+                              color: const Color(0xFF0B1423), // Dark navy background
+                              borderRadius: BorderRadius.circular(40), // Fully rounded pill shape
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.05),
+                                color: const Color(0xFF1C4670), // Distinct blue border from the design
+                                width: 1.5,
                               ),
                             ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  "TARGET",
+                                const Text(
+                                  "SET TARGET",
                                   style: TextStyle(
-                                    color: textGrey,
-                                    fontSize: 10,
+                                    color: Color(0xFF8A99AF), // Muted grey-blue text
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    letterSpacing: 1,
+                                    letterSpacing: 1.5, // Increased letter spacing for the label
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 4),
                                 Text(
                                   "$targetTemp°C",
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 18,
+                                    fontSize: 22, // Slightly larger temperature font
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),

@@ -47,10 +47,11 @@ class _InviteDialogState extends State<InviteDialog> {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
         },
+
         body: jsonEncode({
           "name": nameController.text,
           "email": emailController.text,
-          "permission": selectedPermission,
+          "is_device_access": selectedPermission == "control" ? 1 : 0,
           "device_id": device_id,
         }),
       );
@@ -92,11 +93,12 @@ class _InviteDialogState extends State<InviteDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+
             const Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 "Invite family member",
-                style: TextStyle(color: Colors.white, fontSize: 18),
+                style: TextStyle(color: Colors.white, fontSize: 18,fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 20),
@@ -104,7 +106,7 @@ class _InviteDialogState extends State<InviteDialog> {
             /// Name
             _field("Full name", "e.g. Sarah Marsden", nameController),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             /// Email
             _field("Email", "name@email.com", emailController),
@@ -116,7 +118,7 @@ class _InviteDialogState extends State<InviteDialog> {
               alignment: Alignment.centerLeft,
               child: Text(
                 "Permission",
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 10),
@@ -193,18 +195,36 @@ class _InviteDialogState extends State<InviteDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white70)),
-        const SizedBox(height: 6),
+        Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 13, // 1. Reduced label text size
+            )
+        ),
+        const SizedBox(height: 2), // 2. Reduced gap from 4 to 2
         TextField(
           controller: controller,
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14, // 3. Slightly smaller input text
+          ),
           decoration: InputDecoration(
+            isDense: true, // 4. Tells Flutter to use less vertical space
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 12, // 5. Reduces the internal top/bottom padding
+              horizontal: 12, // Reduces the internal left/right padding
+            ),
             hintText: hint,
-            hintStyle: const TextStyle(color: Colors.white38),
+            hintStyle: const TextStyle(
+              color: Colors.white38,
+              fontSize: 14,
+            ),
             filled: true,
             fillColor: Colors.white.withOpacity(0.05),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8), // Slightly smaller radius
               borderSide: BorderSide.none,
             ),
           ),

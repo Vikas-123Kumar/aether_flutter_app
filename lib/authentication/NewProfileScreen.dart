@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:untitled/DeviceInformations.dart';
 import 'package:untitled/NotificationScreen.dart';
@@ -108,6 +109,23 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     }
   }
 
+  String system_id = "", installed_time = "";
+  int is_can_control = DeviceInformations.is_device_access;
+
+  String getFormattedLocalTime(String utcTimeString) {
+    // 1. Format for strict UTC parsing
+    String formattedUtcStr = utcTimeString.replaceAll(' ', 'T') + 'Z';
+
+    // 2. Parse to DateTime
+    DateTime parsedUtcTime = DateTime.parse(formattedUtcStr);
+
+    // 3. Convert to Local Time
+    DateTime localTime = parsedUtcTime.toLocal();
+
+    // 4. Format to "Month Day, Year" (e.g., "August 5, 26")
+    return DateFormat('MMMM d, yy').format(localTime);
+  }
+
   Future<void> getdeviceDetails() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -130,6 +148,11 @@ class _ProfileScreenState extends State<NewProfileScreen> {
 
         setState(() {
           final installer = data["device"]["installer"];
+          system_id = data["device"]["device_id"];
+          //is_can_control = data["device"]["is_device_access"];
+          installed_time = getFormattedLocalTime(
+            data["device"]["last_synced_at"],
+          );
           if (installer != null) {
             setState(() {
               installerName = installer["installer_name"] ?? "";
@@ -176,13 +199,11 @@ class _ProfileScreenState extends State<NewProfileScreen> {
 
         /// API main data object
         final userData = decodedData["data"];
-
         setState(() {
           _profileData = userData;
 
           /// Set values from API
           name = userData["full_name"] ?? "";
-
           email = userData["email"] ?? "";
 
           mobile = userData["phone_number"] ?? "";
@@ -569,15 +590,19 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                   const Text(
                     "CONTACT DETAILS",
                     style: TextStyle(
-                      color: Colors.grey,
+                      color: Color(0xff758194),
                       fontSize: 12,
                       letterSpacing: 1,
                     ),
                   ),
                   const SizedBox(height: 10),
-                  _buildContactSection(name: name,email: email,mobile: mobile),
+                  _buildContactSection(
+                    name: name,
+                    email: email,
+                    mobile: mobile,
+                  ),
 
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 10),
                   _buildFamilyAndGuests(),
                   const SizedBox(height: 20),
                   const Text(
@@ -592,6 +617,72 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                   companyName.isNotEmpty
                       ? _buildInstallerAndSupport()
                       : _buildNoInstallerCard(),
+                  const SizedBox(height: 10),
+                  const Text(
+                    "SYSTEM DETAILS",
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(
+                        0xFF111C2E,
+                      ), // Dark navy card background
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFF1E293B), // Subtle border outline
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildDetailRowDevice(
+                          iconWidget: const Text(
+                            "#",
+                            style: TextStyle(
+                              color: Color(0xFF38BDF8), // Cyan color
+                              fontSize: 20,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          title: "SYSTEM ID",
+                          value: system_id,
+                        ),
+                        const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Color(0xFF1E293B), // Divider color
+                        ),
+                        _buildDetailRowDevice(
+                          iconWidget: const Icon(
+                            Icons.calendar_today_outlined,
+                            color: Color(0xFF38BDF8),
+                            size: 20,
+                          ),
+                          title: "INSTALLED",
+                          value: installed_time,
+                        ),
+                        // const Divider(
+                        //   height: 1,
+                        //   thickness: 1,
+                        //   color: Color(0xFF1E293B),
+                        // ),
+                        // _buildDetailRowDevice(
+                        //   iconWidget: const Icon(
+                        //     Icons.shield_outlined,
+                        //     color: Color(0xFF38BDF8),
+                        //     size: 20,
+                        //   ),
+                        //   title: "WARRANTY",
+                        //   value: "Active · expires Mar 2031",
+                        // ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 15),
                   const Text(
                     "PREFERENCES",
@@ -608,10 +699,13 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF132A4C),
-                            borderRadius: BorderRadius.circular(20),
+                            color: const Color(0xFF111C2E),
+                            // Dark navy card background
+                            borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: const Color(0xFF2A4B73),
+                              color: const Color(
+                                0xFF1E293B,
+                              ), // Subtle border outline
                               width: 1,
                             ),
                           ),
@@ -732,38 +826,39 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 15),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 45,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : moveConnect,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF39AEFB),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.0),
+                  if (is_can_control == 1)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : moveConnect,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF39AEFB),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16.0),
+                          ),
                         ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                "Update Wifi Credential",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Text(
-                              "Update Wifi Credential",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
                     ),
-                  ),
                   const SizedBox(height: 15),
-                  if (deviceId.isEmpty)
+                  if (deviceId.isEmpty && is_can_control == 1)
                     SizedBox(
                       width: double.infinity,
                       height: 45,
@@ -812,7 +907,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                               ),
                       ),
                     ),
-                  if (deviceId.isNotEmpty)
+                  if (deviceId.isNotEmpty && is_can_control == 1)
                     SizedBox(
                       width: double.infinity,
                       height: 45,
@@ -859,6 +954,60 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildDetailRowDevice({
+    required Widget iconWidget,
+    required String title,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Row(
+        children: [
+          // Icon Container
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B).withOpacity(0.5),
+              // Lighter inner background
+              borderRadius: BorderRadius.circular(12),
+            ),
+            alignment: Alignment.center,
+            child: iconWidget,
+          ),
+          const SizedBox(width: 16),
+
+          // Text Column
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xFF8A99AF), // Muted grey-blue for title
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -939,6 +1088,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       ),
     );
   }
+
   Widget _buildContactSection({
     required String name,
     required String email,
@@ -947,7 +1097,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-            // MAIN CONTAINER HOLDING ALL ITEMS
+        // MAIN CONTAINER HOLDING ALL ITEMS
         Container(
           decoration: BoxDecoration(
             color: const Color(0xFF101726), // Very dark blue/grey background
@@ -960,7 +1110,11 @@ class _ProfileScreenState extends State<NewProfileScreen> {
               _buildDivider(),
               _buildDetailRow(email, "EMAIL", Icons.email_outlined),
               _buildDivider(),
-              _buildDetailRow(mobile, "MOBILE NO.", Icons.phone_android_outlined),
+              _buildDetailRow(
+                mobile,
+                "MOBILE NO.",
+                Icons.phone_android_outlined,
+              ),
             ],
           ),
         ),
@@ -1019,7 +1173,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     );
   }
 
-// Custom divider to match the faint lines in the design
+  // Custom divider to match the faint lines in the design
   Widget _buildDivider() {
     return Divider(
       height: 1,
@@ -1027,6 +1181,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       color: Colors.white.withOpacity(0.05), // Faint separation line
     );
   }
+
   Widget _buildContactDetails(String name, String title1) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1079,206 +1234,206 @@ class _ProfileScreenState extends State<NewProfileScreen> {
             const Text(
               "FAMILY & GUESTS",
               style: TextStyle(
-                color: Colors.grey,
+                color: Color(0XFFFFFFFF),
                 fontSize: 12,
                 letterSpacing: 1,
+                fontWeight: FontWeight.w400,
               ),
             ),
-            TextButton.icon(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => InviteDialog(),
-                );
-              },
-              icon: const Icon(
-                Icons.person_add,
-                size: 14,
-                color: Color(0xFF39AEFB),
+            if (is_can_control == 1)
+              TextButton.icon(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => InviteDialog(),
+                  );
+                },
+                icon: const Icon(
+                  Icons.person_add,
+                  size: 14,
+                  color: Color(0xFF39AEFB),
+                ),
+                label: const Text(
+                  "Invite",
+                  style: TextStyle(color: Color(0xFF39AEFB), fontSize: 12),
+                ),
               ),
-              label: const Text(
-                "Invite",
-                style: TextStyle(color: Color(0xFF39AEFB), fontSize: 12),
-              ),
-            ),
           ],
         ),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF101726), // Dark background matching the image
+            color: const Color(0xFF101726),
+            // Dark background matching the image
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white.withOpacity(0.05)),
           ),
           child: isFamilyLoading
               ? const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Center(child: CircularProgressIndicator()),
-          )
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(child: CircularProgressIndicator()),
+                )
               : familyMembers.isEmpty
               ? const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Center(
-              child: Text(
-                "No family members found",
-                style: TextStyle(color: Colors.white70),
-              ),
-            ),
-          )
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(
+                    child: Text(
+                      "No family members found",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ),
+                )
               : Column(
-            children: List.generate(familyMembers.length, (index) {
-              final member = familyMembers[index];
-              final isOwner = member.role.toLowerCase() == 'owner';
+                  children: List.generate(familyMembers.length, (index) {
+                    final member = familyMembers[index];
+                    final isOwner = member.role.toLowerCase() == 'owner';
 
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                    return Column(
                       children: [
-                        // LEADING AVATAR (Rounded Square)
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: isOwner
-                                ? const LinearGradient(
-                              colors: [
-                                Color(0xFF5AB2FF),
-                                Color(0xFF3282FF)
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                                : null,
-                            color: isOwner
-                                ? null
-                                : const Color(0xFF1E2638), // Dark grey for guests
-                          ),
-                          child: Center(
-                            child: Text(
-                              member.name.isNotEmpty
-                                  ? member.name[0].toUpperCase()
-                                  : "",
-                              style: TextStyle(
-                                color: isOwner
-                                    ? Colors.black87
-                                    : Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-
-                        // MIDDLE TEXT SECTION
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              // Name and "(you)" if owner
-                              Row(
-                                children: [
-                                  Text(
-                                    member.name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 15,
+                              // LEADING AVATAR (Rounded Square)
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  gradient: isOwner
+                                      ? const LinearGradient(
+                                          colors: [
+                                            Color(0xFF5AB2FF),
+                                            Color(0xFF3282FF),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        )
+                                      : null,
+                                  color: isOwner
+                                      ? null
+                                      : const Color(
+                                          0xFF1E2638,
+                                        ), // Dark grey for guests
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    member.name.isNotEmpty
+                                        ? member.name[0].toUpperCase()
+                                        : "",
+                                    style: TextStyle(
+                                      color: isOwner
+                                          ? Colors.black87
+                                          : Colors.white,
+                                      fontSize: 18,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  // if (isOwner)
-                                  //   const Text(
-                                  //     " (you)",
-                                  //     style: TextStyle(
-                                  //       color: Colors.grey,
-                                  //       fontSize: 14,
-                                  //     ),
-                                  //   ),
-                                ],
+                                ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(width: 16),
 
-                              // Subtitles based on role
-                              if (isOwner)
-                                Row(
+                              // MIDDLE TEXT SECTION
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Icon(Icons.ac_unit, // Replace with your exact icon
-                                        color: Color(0xFFF6A83E),
-                                        size: 14),
-                                    const SizedBox(width: 4),
-                                    const Text(
-                                      "Owner - full access",
-                                      style: TextStyle(
-                                        color: Color(0xFFF6A83E), // Golden orange
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                    // Name and "(you)" if owner
+                                    Row(
+                                      children: [
+                                        Text(
+                                          member.name,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                )
-                              else
-                                Column(
-                                  crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      member.email,
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12,
+                                    const SizedBox(height: 1),
+                                    // Subtitles based on role
+                                    if (isOwner)
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.ac_unit,
+                                            // Replace with your exact icon
+                                            color: Color(0xFFF6A83E),
+                                            size: 14,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          const Text(
+                                            "Owner - Full Access",
+                                            style: TextStyle(
+                                              color: Color(0xFFF6A83E),
+                                              // Golden orange
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    else
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            member.email,
+                                            style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                           const SizedBox(height: 8),
+                                          _buildGuestRoleTag(
+                                            member.is_device_access,
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                    // const SizedBox(height: 8),
-                                    // _buildGuestRoleTag(member.role),
                                   ],
                                 ),
+                              ),
+
+                              // TRAILING DELETE ICON (Hidden if owner)
+                              if (!isOwner && is_can_control == 1) ...[
+                                const SizedBox(width: 12),
+                                GestureDetector(
+                                  onTap: () {
+                                     _showDeleteDialog(member);
+                                  },
+                                  child: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.grey,
+                                    size: 22,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
 
-                        // TRAILING DELETE ICON (Hidden if owner)
-                        if (!isOwner) ...[
-                          const SizedBox(width: 12),
-                          GestureDetector(
-                            onTap: () {
-                              // _showDeleteDialog(member);
-                            },
-                            child: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.grey,
-                              size: 22,
-                            ),
+                        // Divider (Do not show after the last item)
+                        if (index != familyMembers.length - 1)
+                          Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: Colors.white.withOpacity(0.05),
                           ),
-                        ],
                       ],
-                    ),
-                  ),
-
-                  // Divider (Do not show after the last item)
-                  if (index != familyMembers.length - 1)
-                    Divider(
-                      height: 1,
-                      thickness: 1,
-                      color: Colors.white.withOpacity(0.05),
-                    ),
-                ],
-              );
-            }),
-          ),
+                    );
+                  }),
+                ),
         ),
       ],
     );
   }
 
-// Custom tag builder to match the blue "Can control" pill from the image
-  Widget _buildGuestRoleTag(String role) {
-    // You can add logic here to display different text based on member.role
-    String displayRole = role.toLowerCase() == 'control' ? 'Can control' : role;
-
+  // Custom tag builder to match the blue "Can control" pill from the image
+  Widget _buildGuestRoleTag(int role) {
+    String displayRole = role == 1 ? "Can Control" : "View Only";
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -1306,6 +1461,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
       ),
     );
   }
+
   void _showDeleteDialog(FamilyMember member) {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
@@ -1800,8 +1956,12 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF162544),
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFF111C2E), // Dark navy card background
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF1E293B), // Subtle border outline
+          width: 1,
+        ),
       ),
       child: const Column(
         children: [

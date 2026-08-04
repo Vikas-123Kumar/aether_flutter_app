@@ -255,7 +255,7 @@ class _ScheduleDashboardScreenState extends State<ScheduleDashboardScreen> {
   final Color highlightCardColor = const Color(0xFF162A45);
   final Color textGrey = const Color(0xFF8B9CB6);
   final Color accentBlue = const Color(0xFF38B6FF);
-  bool is_can_control = true;
+  bool is_can_control = DeviceInformations.is_device_access== 1;
   bool _isLoading = false;
   DashboardData? _data;
 
