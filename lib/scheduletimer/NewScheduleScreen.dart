@@ -18,9 +18,9 @@ class ScheduleItem {
   final int id;
   final String deviceId;
   final String title;
-  final String mode; // e.g., 'Eco', 'Boost', 'Comfort'
+  final String mode; // e.g., 'Eco', 'Boost', 'Standard'
   final int modeInt; // Raw mode ID from backend (e.g. 1)
-  final String tag; // e.g., 'COMFORT'
+  final String tag; // e.g., 'Standard'
   final String startTime; // "10:20"
   final String endTime; // "11:00"
   final int targetTemp; // 43
@@ -67,7 +67,7 @@ class ScheduleItem {
     String mappedMode;
     switch (json['mode']) {
       case 0:
-        mappedMode = 'Comfort';
+        mappedMode = 'Standard';
         break;
       case 1:
         mappedMode = 'Boost';
@@ -77,7 +77,7 @@ class ScheduleItem {
         break;
       default:
         mappedMode =
-            (json['tag'] as String?)?.toLowerCase().capitalize() ?? 'Comfort';
+            (json['tag'] as String?)?.toLowerCase().capitalize() ?? 'Standard';
     }
 
     return ScheduleItem(
@@ -86,7 +86,7 @@ class ScheduleItem {
       title: json['name'] ?? 'Schedule',
       mode: mappedMode,
       modeInt: json['mode'] ?? 1,
-      tag: json['tag'] ?? 'COMFORT',
+      tag: json['tag'] ?? 'Standard',
       startTime: json['start_time'] ?? '00:00',
       endTime: json['end_time'] ?? '00:00',
       targetTemp: json['temperature'] ?? 40,
@@ -293,7 +293,7 @@ class _ScheduleDashboardScreenState extends State<ScheduleDashboardScreen> {
         return const Color(0xff00E676);
       case 'boost':
         return const Color(0xFFF17637);
-      case 'comfort':
+      case 'Standard':
         return const Color(0xFF38B6FF);
       default:
         return Colors.white;
@@ -478,99 +478,99 @@ class _ScheduleDashboardScreenState extends State<ScheduleDashboardScreen> {
 
               const SizedBox(height: 24),
 
-              /// 🔵 SECTION 2: QUICK START GRID
-              if (_data?.quickStart.isNotEmpty ?? false) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "QUICK START",
-                      style: TextStyle(
-                        color: textGrey,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _data!.quickStart.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.5,
-                  ),
-                  itemBuilder: (context, index) {
-                    final item = _data!.quickStart[index];
-                    final modeColor = _getModeColor(item.mode);
-                    return Container(
-                      padding: const EdgeInsets.all(14.0),
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(16.0),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: bgColor,
-                                ),
-                                child: Icon(
-                                  Icons.flash_on,
-                                  color: modeColor,
-                                  size: 12,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                item.mode.toUpperCase(),
-                                style: TextStyle(
-                                  color: modeColor,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                "${item.startTime} - ${item.endTime} · ${item.targetTemp}°C",
-                                style: TextStyle(color: textGrey, fontSize: 10),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-              ],
+              // /// 🔵 SECTION 2: QUICK START GRID
+              // if (_data?.quickStart.isNotEmpty ?? false) ...[
+              //   Row(
+              //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //     children: [
+              //       Text(
+              //         "QUICK START",
+              //         style: TextStyle(
+              //           color: textGrey,
+              //           fontSize: 10,
+              //           fontWeight: FontWeight.bold,
+              //           letterSpacing: 0.8,
+              //         ),
+              //       ),
+              //     ],
+              //   ),
+              //   const SizedBox(height: 12),
+              //   GridView.builder(
+              //     shrinkWrap: true,
+              //     physics: const NeverScrollableScrollPhysics(),
+              //     itemCount: _data!.quickStart.length,
+              //     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              //       crossAxisCount: 2,
+              //       crossAxisSpacing: 12,
+              //       mainAxisSpacing: 12,
+              //       childAspectRatio: 1.5,
+              //     ),
+              //     itemBuilder: (context, index) {
+              //       final item = _data!.quickStart[index];
+              //       final modeColor = _getModeColor(item.mode);
+              //       return Container(
+              //         padding: const EdgeInsets.all(14.0),
+              //         decoration: BoxDecoration(
+              //           color: cardColor,
+              //           borderRadius: BorderRadius.circular(16.0),
+              //         ),
+              //         child: Column(
+              //           crossAxisAlignment: CrossAxisAlignment.start,
+              //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //           children: [
+              //             Row(
+              //               children: [
+              //                 Container(
+              //                   padding: const EdgeInsets.all(4),
+              //                   decoration: BoxDecoration(
+              //                     shape: BoxShape.circle,
+              //                     color: bgColor,
+              //                   ),
+              //                   child: Icon(
+              //                     Icons.flash_on,
+              //                     color: modeColor,
+              //                     size: 12,
+              //                   ),
+              //                 ),
+              //                 const SizedBox(width: 8),
+              //                 Text(
+              //                   item.mode.toUpperCase(),
+              //                   style: TextStyle(
+              //                     color: modeColor,
+              //                     fontSize: 9,
+              //                     fontWeight: FontWeight.bold,
+              //                     letterSpacing: 0.5,
+              //                   ),
+              //                 ),
+              //               ],
+              //             ),
+              //             Column(
+              //               crossAxisAlignment: CrossAxisAlignment.start,
+              //               children: [
+              //                 Text(
+              //                   item.title,
+              //                   maxLines: 1,
+              //                   overflow: TextOverflow.ellipsis,
+              //                   style: const TextStyle(
+              //                     color: Colors.white,
+              //                     fontSize: 13,
+              //                     fontWeight: FontWeight.bold,
+              //                   ),
+              //                 ),
+              //                 const SizedBox(height: 2),
+              //                 Text(
+              //                   "${item.startTime} - ${item.endTime} · ${item.targetTemp}°C",
+              //                   style: TextStyle(color: textGrey, fontSize: 10),
+              //                 ),
+              //               ],
+              //             ),
+              //           ],
+              //         ),
+              //       );
+              //     },
+              //   ),
+              //   const SizedBox(height: 24),
+              // ],
 
               /// 🔵 SECTION 3: ALL SCHEDULES LIST
               Text(

@@ -288,7 +288,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           children: [
             _quickCard("Morning shower", "BOOST"),
             _quickCard("Daytime away", "ECO"),
-            _quickCard("Evening bath", "COMFORT"),
+            _quickCard("Evening bath", "Standard"),
             _quickCard("Night setback", "ECO"),
           ],
         ),

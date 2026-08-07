@@ -38,14 +38,14 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
   final Map<String, Color> modeColors = {
     'Eco': const Color(0xFF00E5A8), // Green
     'Boost': const Color(0xFFFF6B35), // Orange/Red
-    'Comfort': const Color(0xFF38B6FF), // Cyan Blue
+    'Standard': const Color(0xFF38B6FF), // Cyan Blue
   };
 
   // Distinct Background Card Colors when Selected
   final Map<String, Color> modeSelectedBgs = {
     'Eco': const Color(0xFF0D2823),
     'Boost': const Color(0xFF2C1C17),
-    'Comfort': const Color(0xFF10283B),
+    'Standard': const Color(0xFF10283B),
   };
 
   final Map<String, String> _dayNameMap = {
@@ -62,7 +62,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
     switch (mode) {
       case 'Eco':
         return 2;
-      case 'Comfort':
+      case 'Standard':
         return 0;
       case 'Boost':
         return 1;
@@ -542,7 +542,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
 
                 // Heating Modes with Dynamic Mode Colors
                 Row(
-                  children: ['Eco','Comfort', 'Boost'].map((mode) {
+                  children: ['Eco','Standard', 'Boost'].map((mode) {
                     final isSelected = _selectedMode == mode;
                     final activeColor = modeColors[mode]!;
                     final selectedBg = modeSelectedBgs[mode]!;
@@ -558,7 +558,7 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
                             // 1. Set max temp based on mode
                             if (mode == 'Eco') {
                               max_temp = 55.0;
-                            } else if (mode == 'Comfort') {
+                            } else if (mode == 'Standard') {
                               max_temp = 60.0;
                             } else if (mode == 'Boost') {
                               max_temp = 70.0;

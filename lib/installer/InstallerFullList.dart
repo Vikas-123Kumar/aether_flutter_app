@@ -27,7 +27,7 @@ class _DashboardScreenState extends State<InstallerFulllist> {
   String currentTemp = "0";
   String unit = "";
   int targetTemp = 52;
-  String selectedMode = "Comfort";
+  String selectedMode = "Standard";
   bool isUpdatingTemp = false;
   String mode = "ECO"; // standard / eco / boost
   bool isPowerOn = false;

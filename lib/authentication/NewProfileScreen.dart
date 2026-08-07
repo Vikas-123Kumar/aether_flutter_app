@@ -35,6 +35,8 @@ class _ProfileScreenState extends State<NewProfileScreen> {
   String userId = "";
   String firstLetter = "";
   String mobile = "";
+  String address = "";
+  String state = "";
   List<FamilyMember> familyMembers = [];
   bool isFamilyLoading = false;
   bool isLoading = false;
@@ -207,7 +209,8 @@ class _ProfileScreenState extends State<NewProfileScreen> {
           email = userData["email"] ?? "";
 
           mobile = userData["phone_number"] ?? "";
-
+          address = userData["address"] ?? "";
+          state = userData["state"] ?? "";
           userId = userData["id"].toString();
 
           /// First letter for avatar
@@ -600,6 +603,8 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                     name: name,
                     email: email,
                     mobile: mobile,
+                    address: address,
+                    state: state,
                   ),
 
                   const SizedBox(height: 10),
@@ -1022,18 +1027,28 @@ class _ProfileScreenState extends State<NewProfileScreen> {
 
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 28,
-
-            backgroundColor: const Color(0xFF00B4D8).withOpacity(0.2),
-
-            child: Text(
-              firstLetter,
-
-              style: const TextStyle(
-                color: Color(0xFF00B4D8),
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+          Container(
+            width: 50,
+            height:50,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient:  const LinearGradient(
+                colors: [
+                  Color(0xFF5AB2FF),
+                  Color(0xFF3282FF),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+              ),
+            child: Center(
+              child: Text(
+                firstLetter,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -1093,6 +1108,8 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     required String name,
     required String email,
     required String mobile,
+    required String address,
+    required String state,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1114,6 +1131,12 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                 mobile,
                 "MOBILE NO.",
                 Icons.phone_android_outlined,
+              ),
+              _buildDivider(),
+              _buildDetailRow(
+                "$address${(state != null && state.trim().isNotEmpty) ? ", $state" : ""}",
+                "Address",
+                Icons.location_on_outlined,
               ),
             ],
           ),
@@ -1387,7 +1410,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                                               fontSize: 12,
                                             ),
                                           ),
-                                           const SizedBox(height: 8),
+                                          const SizedBox(height: 8),
                                           _buildGuestRoleTag(
                                             member.is_device_access,
                                           ),
@@ -1402,7 +1425,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                                 const SizedBox(width: 12),
                                 GestureDetector(
                                   onTap: () {
-                                     _showDeleteDialog(member);
+                                    _showDeleteDialog(member);
                                   },
                                   child: const Icon(
                                     Icons.delete_outline,

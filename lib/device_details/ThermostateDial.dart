@@ -71,7 +71,7 @@ class ThermostatDial extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    "${target.toString()}*",
+                    "${target.toString()}°C",
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,

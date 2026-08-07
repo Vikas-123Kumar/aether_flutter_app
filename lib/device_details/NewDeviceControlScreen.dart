@@ -43,6 +43,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   Timer? _deviceDataTimer;
   bool ismodeclick = false;
   bool mode_update_first = false;
+  String full_name = "";
 
   // New Global Controls for API Triggers
   bool _isProcessing = false;
@@ -99,6 +100,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         systemNavigationBarIconBrightness: Brightness.light,
       ),
     );
+
     loadUserDeviceList();
     modechange = Timer.periodic(const Duration(seconds: 2), (timer) {
       getDeviceModeDataForTemp();
@@ -177,7 +179,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
             if (setPointDataMode.val == "2") {
               selectedMode = "Eco";
             } else if (setPointDataMode.val == "0") {
-              selectedMode = "Comfort";
+              selectedMode = "Standard";
             } else if (setPointDataMode.val == "1") {
               selectedMode = "Boost";
             }
@@ -187,7 +189,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
             if (setPointDataMode.val == "2") {
               selectedMode = "Eco";
             } else if (setPointDataMode.val == "0") {
-              selectedMode = "Comfort";
+              selectedMode = "Standard";
             } else if (setPointDataMode.val == "1") {
               selectedMode = "Boost";
             }
@@ -263,7 +265,24 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       _isFetching = false;
     }
   }
+  Timer? _buttonHighlightTimer;
 
+  void highlightButton(String button) {
+    // Cancel any previous timer
+    _buttonHighlightTimer?.cancel();
+
+    setState(() {
+      selectedButton = button;
+    });
+
+    _buttonHighlightTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+
+      setState(() {
+        selectedButton = "";
+      });
+    });
+  }
   Future<void> getDeviceModeData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -303,7 +322,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
             if (setPointDataMode.val == "2") {
               selectedMode = "Eco";
             } else if (setPointDataMode.val == "0") {
-              selectedMode = "Comfort";
+              selectedMode = "Standard";
             } else if (setPointDataMode.val == "1") {
               selectedMode = "Boost";
             }
@@ -363,6 +382,10 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
   Future<void> loadUserDeviceList() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        full_name = prefs.getString("full_name") ?? "";
+      });
       bool connected = await InternetService().hasInternet();
       if (!connected) {
         ScaffoldMessenger.of(
@@ -446,7 +469,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     String api_mode = "0";
     if (mode == "Eco") {
       api_mode = "2";
-    } else if (mode == "Comfort") {
+    } else if (mode == "Standard") {
       api_mode = "0";
     } else if (mode == "Boost") {
       api_mode = "1";
@@ -688,7 +711,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      "Powered by",
+                                      "AETHER SMART",
                                       style: TextStyle(
                                         color: textGrey,
                                         fontSize: 10,
@@ -697,16 +720,17 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 2),
-                                    Text(
-                                      "aetherSmart",
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                                    if (full_name.isNotEmpty)
+                                      Text(
+                                        full_name + "'Heat Pump",
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -862,14 +886,14 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                       return;
                                     }
                                     setState(() {
-                                      selectedButton = 'minus';
+                                      highlightButton('minus');
                                     });
                                     int maxTemp;
                                     switch (selectedMode) {
                                       case "Eco":
                                         maxTemp = 55;
                                         break;
-                                      case "Comfort":
+                                      case "Standard":
                                         maxTemp = 60;
                                         break;
                                       case "Boost":
@@ -942,13 +966,17 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
                           /// Target Pill
                           Container(
-                            width: 140, // Increased slightly to match the pill proportions
+                            width: 140,
+                            // Increased slightly to match the pill proportions
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0B1423), // Dark navy background
-                              borderRadius: BorderRadius.circular(40), // Fully rounded pill shape
+                              color: const Color(0xFF0B1423),
+                              // Dark navy background
+                              borderRadius: BorderRadius.circular(40),
+                              // Fully rounded pill shape
                               border: Border.all(
-                                color: const Color(0xFF1C4670), // Distinct blue border from the design
+                                color: const Color(0xFF1C4670),
+                                // Distinct blue border from the design
                                 width: 1.5,
                               ),
                             ),
@@ -958,10 +986,12 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                 const Text(
                                   "SET TARGET",
                                   style: TextStyle(
-                                    color: Color(0xFF8A99AF), // Muted grey-blue text
+                                    color: Color(0xFF8A99AF),
+                                    // Muted grey-blue text
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    letterSpacing: 1.5, // Increased letter spacing for the label
+                                    letterSpacing:
+                                        1.5, // Increased letter spacing for the label
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -969,7 +999,8 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                   "$targetTemp°C",
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 22, // Slightly larger temperature font
+                                    fontSize: 22,
+                                    // Slightly larger temperature font
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -1012,18 +1043,18 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                       return;
                                     }
                                     if (!isDeviceActive) {
-                                     showSnacBar();
+                                      showSnacBar();
                                       return;
                                     }
                                     setState(() {
-                                      selectedButton = 'plus';
+                                      highlightButton('plus');
                                     });
                                     int maxTemp;
                                     switch (selectedMode) {
                                       case "Eco":
                                         maxTemp = 55;
                                         break;
-                                      case "Comfort":
+                                      case "Standard":
                                         maxTemp = 60;
                                         break;
                                       case "Boost":
@@ -1098,10 +1129,10 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                           ),
                           const SizedBox(width: 10),
                           _buildModeCard(
-                            "Comfort",
+                            "Standard",
                             "Everyday balance",
                             Icons.shield_outlined,
-                            selectedMode == "Comfort",
+                            selectedMode == "Standard",
                           ),
                           const SizedBox(width: 10),
                           _buildModeCard(

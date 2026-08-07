@@ -67,6 +67,7 @@ class _LoginScreenState extends State<NewLoginScreen> {
             : int.tryParse(user["id"]?.toString() ?? "0") ?? 0;
 
         String timezone = user["timezone"]?.toString() ?? "";
+        String name = user["full_name"]?.toString() ?? "";
         String companyName = user["company_name"]?.toString() ?? "";
         String currentRole = data["current_role"]?.toString() ?? "";
 
@@ -79,6 +80,7 @@ class _LoginScreenState extends State<NewLoginScreen> {
         await prefs.setString("timezone", timezone);
         await prefs.setString("company_name", companyName);
         await prefs.setString("current_role", currentRole);
+        await prefs.setString("full_name", name);
 
         print("User ID: $userId  $currentRole");
 

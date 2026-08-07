@@ -24,7 +24,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
   String currentTemp = "0";
   String unit = "°C";
   int targetTemp = 52;
-  String selectedMode = "Comfort";
+  String selectedMode = "Standard";
   String runtime = "";
   bool isUpdatingTemp = false;
   bool isLoading = true;
@@ -122,7 +122,7 @@ class _InstallerdeviceinfoscreenState extends State<Installerdeviceinfoscreen> {
           if (setPointDataMode.val == "2") {
             selectedMode = "Eco";
           } else if (setPointDataMode.val == "0") {
-            selectedMode = "Comfort";
+            selectedMode = "Standard";
           } else if (setPointDataMode.val == "1") {
             selectedMode = "Boost";
           }
