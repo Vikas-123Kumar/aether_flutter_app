@@ -176,7 +176,7 @@ class ConnectedScreen extends StatelessWidget {
                         const SizedBox(height: 6),
 
                         const Text(
-                          "Aether Home 270L",
+                          "AetherX",
                           style: TextStyle(
                             color: Color(0xFF95A3C4),
                             fontSize: 14,
@@ -214,7 +214,6 @@ class ConnectedScreen extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 20),
-
                   /// BUTTON
                   Container(
                     width: double.infinity,

@@ -18,6 +18,7 @@ import '../invite/InviteDialog.dart';
 import '../invite/SyncDevice.dart';
 import '../pairdevice/ConnectScreen.dart';
 import '../pairdevice/ConnectedScreen.dart';
+import 'EditProfileScreen.dart';
 import 'model/FamilyMember.dart';
 
 class NewProfileScreen extends StatefulWidget {
@@ -37,6 +38,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
   String mobile = "";
   String address = "";
   String state = "";
+  String timezone = "";
   List<FamilyMember> familyMembers = [];
   bool isFamilyLoading = false;
   bool isLoading = false;
@@ -211,10 +213,11 @@ class _ProfileScreenState extends State<NewProfileScreen> {
           mobile = userData["phone_number"] ?? "";
           address = userData["address"] ?? "";
           state = userData["state"] ?? "";
+          timezone = userData["timezone"] ?? "";
           userId = userData["id"].toString();
 
           /// First letter for avatar
-          firstLetter = name.isNotEmpty ? name[0].toUpperCase() : "U";
+          firstLetter = name.isNotEmpty ? name[0].toUpperCase() : "";
         });
       } else {
         print("API Failed");
@@ -590,13 +593,65 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                 children: [
                   _buildUserHeader(),
                   const SizedBox(height: 20),
-                  const Text(
-                    "CONTACT DETAILS",
-                    style: TextStyle(
-                      color: Color(0xff758194),
-                      fontSize: 12,
-                      letterSpacing: 1,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "CONTACT DETAILS",
+                        style: TextStyle(
+                          color: Color(0xff758194),
+                          fontSize: 12,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () async {
+                          // Navigate to Edit Screen and wait for returned data
+                          final updatedData = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditProfileScreen(
+                                name: name,
+                                email: email,
+                                phone: mobile,
+                                address: address,
+                                state: state,
+                                timezone: timezone,
+                              ),
+                            ),
+                          );
+
+                          // If user saved data, update the UI
+                          if (updatedData != null) {
+                            setState(() {
+                              name = updatedData['name'];
+                              email = updatedData['email'];
+                              mobile = updatedData['phone_number'];
+                              address = updatedData['address'];
+                              state = updatedData['state'];
+                              timezone = updatedData['timezone'];
+                            });
+                          }
+                        },
+                        child: Row(
+                          children: [
+                            Text(
+                              "Edit",
+                              style: TextStyle(
+                                color: Colors.lightBlueAccent,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.edit,
+                              color: Colors.lightBlueAccent,
+                              size: 14,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
                   _buildContactSection(
@@ -1029,18 +1084,15 @@ class _ProfileScreenState extends State<NewProfileScreen> {
         children: [
           Container(
             width: 50,
-            height:50,
+            height: 50,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              gradient:  const LinearGradient(
-                colors: [
-                  Color(0xFF5AB2FF),
-                  Color(0xFF3282FF),
-                ],
+              gradient: const LinearGradient(
+                colors: [Color(0xFF5AB2FF), Color(0xFF3282FF)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-              )
               ),
+            ),
             child: Center(
               child: Text(
                 firstLetter,
