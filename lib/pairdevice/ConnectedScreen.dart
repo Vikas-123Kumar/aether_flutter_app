@@ -28,47 +28,47 @@ class ConnectedScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 12),
                   /// TOP BUTTON
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF34D1FF), Color(0xFF4E8CFF)],
-                        ),
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blue.withOpacity(0.4),
-                            blurRadius: 15,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(
-                            Icons.auto_awesome,
-                            color: Colors.black,
-                            size: 15,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            "Assist",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  // Align(
+                  //   alignment: Alignment.topRight,
+                  //   child: Container(
+                  //     padding: const EdgeInsets.symmetric(
+                  //       horizontal: 14,
+                  //       vertical: 10,
+                  //     ),
+                  //     decoration: BoxDecoration(
+                  //       gradient: const LinearGradient(
+                  //         colors: [Color(0xFF34D1FF), Color(0xFF4E8CFF)],
+                  //       ),
+                  //       borderRadius: BorderRadius.circular(30),
+                  //       boxShadow: [
+                  //         BoxShadow(
+                  //           color: Colors.blue.withOpacity(0.4),
+                  //           blurRadius: 15,
+                  //           spreadRadius: 2,
+                  //         ),
+                  //       ],
+                  //     ),
+                  //     child: Row(
+                  //       mainAxisSize: MainAxisSize.min,
+                  //       children: const [
+                  //         Icon(
+                  //           Icons.auto_awesome,
+                  //           color: Colors.black,
+                  //           size: 15,
+                  //         ),
+                  //         SizedBox(width: 6),
+                  //         Text(
+                  //           "Assist",
+                  //           style: TextStyle(
+                  //             color: Colors.black,
+                  //             fontWeight: FontWeight.w600,
+                  //             fontSize: 12,
+                  //           ),
+                  //         ),
+                  //       ],
+                  //     ),
+                  //   ),
+                  // ),
 
                   const SizedBox(height: 30),
 
@@ -240,11 +240,12 @@ class ConnectedScreen extends StatelessWidget {
                         ),
                       ),
                       onPressed: () {
-                        Navigator.pushReplacement(
+                        Navigator.pushAndRemoveUntil(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const DashboardScreen(),
                           ),
+                              (Route<dynamic> route) => false, // This line destroys all previous screens
                         );
                       },
                       child: const Row(

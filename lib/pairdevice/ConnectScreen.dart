@@ -7,34 +7,42 @@ import 'package:network_info_plus/network_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'package:untitled/pairdevice/ConnectedScreen.dart';
+import 'package:untitled/pairdevice/StepSixScreen.dart';
 
 import '../authentication/rest/APIService.dart';
 
 class ConnectScreen extends StatefulWidget {
   final bool fromNoDevice;
+  final bool manualEnter;
+  final String serial_number;
 
-  const ConnectScreen({
+  ConnectScreen({
     super.key,
     this.fromNoDevice = false,
+    this.manualEnter = false,
+    required this.serial_number,
   });
+
   @override
   State<ConnectScreen> createState() => _ConnectScreenState();
 }
 
 class _ConnectScreenState extends State<ConnectScreen> {
   bool _isLoading = false;
-  double _progress = 0.0; // Tracks progress from 0.0 to 1.0
-  String _loadingMessage = ""; // Track current step description
-  int _selectedNetworkIndex = 0;
   final TextEditingController _serialnumberController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController ssidController = TextEditingController();
   String ssid = "";
   final Color cardBg = const Color(0xFF0F1726);
+  String serialNumber = "";
+  static const Color blue = Color(0xFF4CA6FF);
 
   @override
   void initState() {
     super.initState();
+    _serialnumberController.text = widget.serial_number;
+    serialNumber= widget.serial_number;
+    print(widget.serial_number);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       loadWifi();
     });
@@ -43,55 +51,27 @@ class _ConnectScreenState extends State<ConnectScreen> {
   Future<void> sendWifiCredentials() async {
     String ssid = ssidController.text.trim();
     String password = _passwordController.text.trim();
-    String serialNumber = _serialnumberController.text.trim();
-
-    if (serialNumber.isEmpty || ssid.isEmpty || password.isEmpty) {
+    if ( ssid.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Please enter all details")));
       return;
     }
-
-    // Step 1: Send Wi-Fi credentials to hardware
-    setState(() {
-      _isLoading = true;
-      _progress = 0.15;
-      _loadingMessage = "Sending Wi-Fi credentials to device...";
-    });
-
-    String url =
-        "http://192.168.4.1/wifisave?s=${Uri.encodeComponent(ssid)}&p=${Uri.encodeComponent(password)}";
-
-    try {
-      final response = await http
-          .get(Uri.parse(url))
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        print("Success sending Wi-Fi info: ${response.body}");
-      } else {
-        print("Failed to send Wi-Fi info: ${response.statusCode}");
-      }
-    } catch (e) {
-      print("Error connecting to hardware: $e");
-      // Stop process if hardware request fails
+    if(widget.manualEnter&&_serialnumberController.text.trim().isEmpty){
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please enter all details")));
+      return;
+    }else{
+      serialNumber=_serialnumberController.text;
     }
-
-    // Step 2: Waiting for hardware to connect to Wi-Fi
-    setState(() {
-      _progress = 0.50;
-    });
-
-    await Future.delayed(const Duration(seconds: 8));
-
-    // Step 3: Syncing device with backend server
-    setState(() {
-      _progress = 0.80;
-      _loadingMessage = "Syncing device with server...";
-    });
-
-    await syncDevice(serialNumber);
-  }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+         StepSixScreen(ssid: ssid, password: password, serialnumber: serialNumber),
+      ),
+    );  }
 
   Future<bool> requestPermission() async {
     // 1. Check if the device's Location Service (GPS) is physically turned on
@@ -196,68 +176,6 @@ class _ConnectScreenState extends State<ConnectScreen> {
     }
   }
 
-  Future<void> syncDevice(String deviceId) async {
-    final prefs = await SharedPreferences.getInstance();
-    int userId = prefs.getInt("user_id") ?? 0;
-    String currentRole = prefs.getString("current_role") ?? "";
-
-    try {
-      String apiEndpoint = currentRole == "Installer"
-          ? "syncDeviceByInstaller"
-          : "syncDevice";
-
-      final response = await ApiService().post(apiEndpoint, {
-        "device_id": deviceId,
-        "user_id": userId.toString(),
-      });
-
-      final data = response.data;
-      bool success = data["success"] ?? false;
-      String message = data["message"] ?? "";
-
-      // Set progress complete
-      setState(() {
-        _progress = 1.0;
-      });
-
-      await Future.delayed(
-        const Duration(milliseconds: 300),
-      ); // Brief pause to complete progress bar animation
-
-      if (!mounted) return;
-
-      /// ALWAYS HIDE LOADING OVERLAY regardless of success or failure
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (success == true || message.contains("already sync")) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ConnectedScreen(serial_number: deviceId),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
-      }
-    } catch (e) {
-      print("Sync Error => $e");
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Sync Error: $e")));
-    }
-  }
-
   @override
   void dispose() {
     _passwordController.dispose();
@@ -282,30 +200,28 @@ class _ConnectScreenState extends State<ConnectScreen> {
         leadingWidth: widget.fromNoDevice ? 56 : 0,
         leading: widget.fromNoDevice
             ? Padding(
-          padding: const EdgeInsets.only(left: 12.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: cardBg,
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: const Icon(
-                Icons.arrow_back,
-                color: Colors.white,
-                size: 18,
-              ),
-              onPressed: _isLoading
-                  ? null
-                  : () => Navigator.pop(context),
-            ),
-          ),
-        )
+                padding: const EdgeInsets.only(left: 12.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    onPressed: _isLoading ? null : () => Navigator.pop(context),
+                  ),
+                ),
+              )
             : null,
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Connect",
+              "Your Wi-Fi network",
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -313,7 +229,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
               ),
             ),
             Text(
-              "System notifications & diagnostics",
+              "Step 5 of 6",
               style: TextStyle(color: Colors.grey, fontSize: 11),
             ),
           ],
@@ -327,42 +243,90 @@ class _ConnectScreenState extends State<ConnectScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(20.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8.0,
+                    vertical: 15.0,
+                  ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF161F33),
-                    borderRadius: BorderRadius.circular(16.0),
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF1533C2FF), Color(0xFF1533C2FF)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: blue.withOpacity(0.20)),
                   ),
                   child: Row(
                     children: [
+                      // 1. Glowing Wi-Fi Icon
                       Container(
-                        padding: const EdgeInsets.all(16.0),
+                        width: 50,
+                        height: 50,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF39AEFB),
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        child: const Text(
-                          "A",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                          borderRadius: BorderRadius.circular(14),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF57BAFF), Color(0xFF3886FF)],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF4CA6FF).withOpacity(0.3),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.wifi,
+                          color: Color(0xFF001A33), // Dark navy icon color
+                          size: 32,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      const Expanded(
+                      const SizedBox(width: 20),
+
+                      // 2. Text Information Column
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
+                            // Top Label
                             Text(
-                              "Aether Home",
+                              "DETECTED NETWORK",
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
+                                color: Colors.grey[400],
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.2,
                               ),
                             ),
-                            SizedBox(height: 8),
-                            Row(children: [SizedBox(width: 6)]),
+                            const SizedBox(height: 4),
+
+                            // Wi-Fi SSID
+                            Text(
+                              ssid.isNotEmpty
+                                  ? "$ssid"
+                                  : "Not connected to Wi-Fi",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+
+                            // Subtitle
+                            Text(
+                              "Pairing with ${widget.serial_number}",
+                              // Ensure you pass the serial number variable here
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 13,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -379,12 +343,14 @@ class _ConnectScreenState extends State<ConnectScreen> {
                     letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 12),
-                _buildTextField(
-                  controller: _serialnumberController,
-                  hint: "Enter Serial Number",
-                  icon: Icons.device_thermostat,
-                ),
+                if(widget.manualEnter)
+                 const SizedBox(height: 12),
+                if(widget.manualEnter)
+                  _buildTextField(
+                    controller: _serialnumberController,
+                    hint: "Enter Serial Number",
+                    icon: Icons.device_thermostat,
+                  ),
                 const SizedBox(height: 12),
                 _buildTextField(
                   controller: ssidController,
@@ -448,23 +414,51 @@ class _ConnectScreenState extends State<ConnectScreen> {
                   ],
                 ),
                 const SizedBox(height: 32),
-                SizedBox(
+                Container(
                   width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : sendWifiCredentials,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF39AEFB),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16.0),
-                      ),
+                  height: 54,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF57BAFF), Color(0xFF3886FF)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                     ),
-                    child: const Text(
-                      "Connect device",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF4CA6FF).withOpacity(0.3),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () {
+                        _isLoading ? null : sendWifiCredentials();
+                        // TODO: Navigate to Step 4
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Text(
+                            'Continue',
+                            style: TextStyle(
+                              color: Color(0xFF001A33), // Dark navy text
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(width: 6),
+                          Icon(
+                            Icons.arrow_forward,
+                            color: Color(0xFF001A33),
+                            size: 18,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -472,73 +466,6 @@ class _ConnectScreenState extends State<ConnectScreen> {
               ],
             ),
           ),
-
-          // Custom Progress Bar Overlay
-          if (_isLoading)
-            Container(
-              color: Colors.black.withOpacity(0.75),
-              child: Center(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 24.0),
-                  padding: const EdgeInsets.all(24.0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF161F33),
-                    borderRadius: BorderRadius.circular(20.0),
-                    border: Border.all(
-                      color: const Color(0xFF00B4D8).withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            "Pairing Device",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            "${(_progress * 100).toInt()}%",
-                            style: const TextStyle(
-                              color: Color(0xFF00B4D8),
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: LinearProgressIndicator(
-                          value: _progress,
-                          minHeight: 8,
-                          backgroundColor: const Color(0xFF0C101B),
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                            Color(0xFF00B4D8),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _loadingMessage,
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );

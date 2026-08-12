@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:untitled/CustomerInformation.dart';
 import 'package:untitled/installer/InstallerDeviceInfoScreen.dart';
-import 'package:untitled/pairdevice/ConnectScreen.dart';
+import 'package:untitled/pairdevice/NewControlScreen.dart';
 
 import '../DeviceInformations.dart';
 import '../DeviceListItem.dart';
@@ -398,7 +398,7 @@ class _DashboardScreenState extends State<Installerlist> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const ConnectScreen(fromNoDevice: true,)),
+          MaterialPageRoute(builder: (context) => const NewControlDevice()),
         );
       },
       child: Container(

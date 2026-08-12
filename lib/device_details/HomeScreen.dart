@@ -9,6 +9,7 @@ import 'package:untitled/pairdevice/ConnectScreen.dart';
 import 'package:untitled/scheduletimer/NewScheduleScreen.dart';
 
 import '../installer/InstallerFullList.dart';
+import '../pairdevice/NewControlScreen.dart';
 import 'NewDeviceControlScreen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -41,7 +42,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return [
         const Installerlist(),
         InstallerFulllist(),
-        ConnectScreen(fromNoDevice: false,),
+        NewControlDevice(),
         const Installerprofile(),
       ];
     }

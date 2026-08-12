@@ -9,6 +9,7 @@ import 'package:sleek_circular_slider/sleek_circular_slider.dart';
 import 'package:untitled/DeviceInformations.dart';
 import 'package:untitled/authentication/model/Device.dart';
 import 'package:untitled/pairdevice/ConnectScreen.dart';
+import 'package:untitled/pairdevice/NewControlScreen.dart';
 
 import '../InternetService.dart';
 import '../WeatherForecastScreen.dart';
@@ -403,12 +404,13 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         return;
       }
       if (response.statusCode == 200) {
+
         List devices = data["devices"] ?? [];
         if (devices.isEmpty) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => const ConnectScreen(fromNoDevice: false),
+              builder: (_) => const NewControlDevice(),
             ),
           );
           return;

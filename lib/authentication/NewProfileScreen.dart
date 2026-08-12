@@ -18,6 +18,7 @@ import '../invite/InviteDialog.dart';
 import '../invite/SyncDevice.dart';
 import '../pairdevice/ConnectScreen.dart';
 import '../pairdevice/ConnectedScreen.dart';
+import '../pairdevice/NewControlScreen.dart';
 import 'EditProfileScreen.dart';
 import 'model/FamilyMember.dart';
 
@@ -235,7 +236,8 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => const ConnectScreen(fromNoDevice: true),
+      //  builder: (_) => const ConnectScreen(fromNoDevice: true),
+        builder: (_) => const NewControlDevice(),
       ),
     );
   }
