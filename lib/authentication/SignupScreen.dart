@@ -424,40 +424,40 @@ class _SignupscreenState extends State<Signupscreen> {
                     ),
                   ),
                 ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: TextFormField(
-                      controller: timeZoneController,
-                      readOnly: true,
-                      style: const TextStyle(color: Colors.white),
-
-                      decoration: InputDecoration(
-                        hintText: "Time Zone",
-                        hintStyle: const TextStyle(color: Colors.grey),
-
-                        prefixIcon: const Icon(
-                          Icons.access_time_outlined,
-                          color: Colors.blueAccent,
-                          size: 22,
-                        ),
-
-                        filled: true,
-                        fillColor: const Color(0xFF121A2F),
-
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide.none,
-                        ),
-
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color: Colors.white24,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  // Padding(
+                  //   padding: const EdgeInsets.only(bottom: 12),
+                  //   child: TextFormField(
+                  //     controller: timeZoneController,
+                  //     readOnly: true,
+                  //     style: const TextStyle(color: Colors.white),
+                  //
+                  //     decoration: InputDecoration(
+                  //       hintText: "Time Zone",
+                  //       hintStyle: const TextStyle(color: Colors.grey),
+                  //
+                  //       prefixIcon: const Icon(
+                  //         Icons.access_time_outlined,
+                  //         color: Colors.blueAccent,
+                  //         size: 22,
+                  //       ),
+                  //
+                  //       filled: true,
+                  //       fillColor: const Color(0xFF121A2F),
+                  //
+                  //       border: OutlineInputBorder(
+                  //         borderRadius: BorderRadius.circular(14),
+                  //         borderSide: BorderSide.none,
+                  //       ),
+                  //
+                  //       enabledBorder: OutlineInputBorder(
+                  //         borderRadius: BorderRadius.circular(14),
+                  //         borderSide: BorderSide(
+                  //           color: Colors.white24,
+                  //         ),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
 
                   _input(
                     addressController,
@@ -468,7 +468,7 @@ class _SignupscreenState extends State<Signupscreen> {
                   if (selectedUserType == "installer") ...[
                     _input(
                       installerIdController,
-                      "Installer ID",
+                      "License / Technician ID",
                       Icons.badge_outlined,
                     ),
 
@@ -505,18 +505,67 @@ class _SignupscreenState extends State<Signupscreen> {
 
                   const SizedBox(height: 10),
 
-                  ElevatedButton(
-                    onPressed: isLoading ? null : sendData,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: Colors.blueAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            Color(0xFF38B6F6),
+                            Color(0xFF4C8FFB),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF299DEB).withOpacity(0.35),
+                            blurRadius: 14,
+                            spreadRadius: 1,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: isLoading ? null : sendData,
+                          borderRadius: BorderRadius.circular(14),
+                          child: Center(
+                            child: isLoading
+                                ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.black,
+                              ),
+                            )
+                                : const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  "Create account",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(width: 7),
+                                Icon(
+                                  Icons.arrow_forward,
+                                  size: 16,
+                                  color: Colors.black,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                    child: isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text("Create account",style: TextStyle(color: Colors.white)),
                   ),
 
                   const SizedBox(height: 20),

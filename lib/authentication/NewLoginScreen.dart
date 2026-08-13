@@ -166,7 +166,7 @@ class _LoginScreenState extends State<NewLoginScreen> {
                     /// Email Field
                     buildField(
                       controller: emailController,
-                      hint: "Enter address",
+                      hint: "Email address",
                       icon: Icons.email,
                     ),
 
@@ -175,7 +175,7 @@ class _LoginScreenState extends State<NewLoginScreen> {
                     /// Password Field
                     buildField(
                       controller: passwordController,
-                      hint: "password",
+                      hint: "Password",
                       icon: Icons.lock,
                       isPassword: true,
                     ),
@@ -207,31 +207,69 @@ class _LoginScreenState extends State<NewLoginScreen> {
                     SizedBox(
                       width: double.infinity,
                       height: 55,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : login,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              Color(0xFF38B6F6),
+                              Color(0xFF4C8FFB),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF299DEB).withOpacity(0.35),
+                              blurRadius: 14,
+                              spreadRadius: 1,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: isLoading ? null : login,
+                            borderRadius: BorderRadius.circular(14),
+                            child: Center(
+                              child: isLoading
+                                  ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.black,
+                                ),
+                              )
+                                  : const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    "Sign in",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    "→",
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                        child: isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : const Text(
-                                "Sign in",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
                       ),
                     ),
-
                     const SizedBox(height: 15),
-
                     /// Signup Text
                     Center(
                       child: RichText(

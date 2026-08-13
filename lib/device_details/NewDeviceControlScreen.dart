@@ -16,6 +16,7 @@ import '../WeatherForecastScreen.dart';
 import '../authentication/NewLoginScreen.dart';
 import '../authentication/model/DeviceDataModel.dart';
 import '../authentication/rest/APIService.dart';
+import '../scheduletimer/NewScheduleScreen.dart';
 import 'ThermostateDial.dart';
 
 class NewDeviceControlScreen extends StatefulWidget {
@@ -58,6 +59,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   bool is_power_update = false;
   bool is_can_control = false;
   String pre_mode = "", current_mode = "", coming_mode = "";
+  final Color bgColor = const Color(0xFF0A101A);
 
   // Design Colors
   final Color bgColorStart = const Color(0xFF0F1725);
@@ -101,13 +103,13 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         systemNavigationBarIconBrightness: Brightness.light,
       ),
     );
-
     loadUserDeviceList();
     modechange = Timer.periodic(const Duration(seconds: 2), (timer) {
       getDeviceModeDataForTemp();
       //getDeviceModeData();
     });
-    getWeatherForecast();
+
+    //getWeatherForecast();
   }
 
   DeviceDataModel? getItem(String alias) {
@@ -266,6 +268,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       _isFetching = false;
     }
   }
+
   Timer? _buttonHighlightTimer;
 
   void highlightButton(String button) {
@@ -284,6 +287,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       });
     });
   }
+
   Future<void> getDeviceModeData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -404,14 +408,11 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         return;
       }
       if (response.statusCode == 200) {
-
         List devices = data["devices"] ?? [];
         if (devices.isEmpty) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(
-              builder: (_) => const NewControlDevice(),
-            ),
+            MaterialPageRoute(builder: (_) => const NewControlDevice()),
           );
           return;
         }
@@ -432,6 +433,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         });
 
         getDeviceData();
+        fetchSchedules();
         if (!mounted) return;
         setState(() {
           isCheckingDevices = false;
@@ -591,6 +593,166 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     });
   }
 
+  ScheduleItem? firstSchedule;
+  bool isScheduleLoading = true;
+  String getNextScheduleDay(ScheduleItem schedule) {
+    if (schedule.days.isEmpty) {
+      return "No day";
+    }
+
+    final now = DateTime.now();
+
+    final dayIndexes = {
+      "sunday": 7,
+      "monday": 1,
+      "tuesday": 2,
+      "wednesday": 3,
+      "thursday": 4,
+      "friday": 5,
+      "saturday": 6,
+    };
+
+    // Convert API days into DateTime weekday numbers
+    final scheduleDays = schedule.days
+        .map((day) => dayIndexes[day.toLowerCase()])
+        .whereType<int>()
+        .toList();
+
+    if (scheduleDays.isEmpty) {
+      return "No day";
+    }
+
+    // Parse schedule start time
+    final timeParts = schedule.startTime.split(":");
+
+    final hour = int.tryParse(timeParts[0]) ?? 0;
+    final minute =
+    timeParts.length > 1 ? int.tryParse(timeParts[1]) ?? 0 : 0;
+
+    DateTime? nextDate;
+
+    for (final day in scheduleDays) {
+      int daysUntil = (day - now.weekday) % 7;
+
+      DateTime candidate = DateTime(
+        now.year,
+        now.month,
+        now.day + daysUntil,
+        hour,
+        minute,
+      );
+
+      // If it's today but the schedule time has already passed,
+      // move to the next week.
+      if (candidate.isBefore(now)) {
+        candidate = candidate.add(const Duration(days: 7));
+      }
+
+      if (nextDate == null || candidate.isBefore(nextDate)) {
+        nextDate = candidate;
+      }
+    }
+
+    if (nextDate == null) {
+      return "No day";
+    }
+
+    // If the next schedule is today
+    if (nextDate.year == now.year &&
+        nextDate.month == now.month &&
+        nextDate.day == now.day) {
+      return "Today";
+    }
+
+    // If tomorrow
+    final tomorrow = now.add(const Duration(days: 1));
+
+    if (nextDate.year == tomorrow.year &&
+        nextDate.month == tomorrow.month &&
+        nextDate.day == tomorrow.day) {
+      return "Tomorrow";
+    }
+
+    // Otherwise return weekday name
+    const weekdayNames = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+    ];
+
+    return weekdayNames[nextDate.weekday - 1];
+  }
+  Future<void> fetchSchedules() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String token = prefs.getString("token") ?? "";
+
+      String baseUrl = "https://aetherone.com.au/api/v1";
+
+      final uri = Uri.parse("$baseUrl/timerSchedules").replace(
+        queryParameters: {
+          "device_id": DeviceInformations.selectedDeviceId,
+          "type": "schedule",
+        },
+      );
+
+      print("Fetching schedules from: $uri");
+
+      final response = await http.get(
+        uri,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> body = jsonDecode(response.body);
+
+        List<ScheduleItem> parsedSchedules = [];
+
+        if (body['data'] is List) {
+          parsedSchedules = (body['data'] as List)
+              .map((item) => ScheduleItem.fromJson(item))
+              .toList();
+        } else if (body['data'] is Map<String, dynamic>) {
+          parsedSchedules = [ScheduleItem.fromJson(body['data'])];
+        }
+
+        if (mounted) {
+          setState(() {
+            firstSchedule = parsedSchedules.isNotEmpty
+                ? parsedSchedules.first
+                : null;
+
+            isScheduleLoading = false;
+          });
+        }
+
+        print("Total schedules: ${parsedSchedules.length}");
+        print(
+          "First schedule: ${parsedSchedules.isNotEmpty ? parsedSchedules.first : "None"}",
+        );
+      } else {
+        throw Exception("Failed to load schedules: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error fetching schedules: $e");
+
+      if (mounted) {
+        setState(() {
+          firstSchedule = null;
+          isScheduleLoading = false;
+        });
+      }
+    }
+  }
+
   void showSnacBar() {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -668,7 +830,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
       );
     }
     return Scaffold(
-      backgroundColor: bgColorStart,
+      backgroundColor: bgColor,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -685,7 +847,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
 
                     /// 🟢 HEADER
                     Row(
@@ -706,7 +868,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                   size: 20,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 8),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -724,7 +886,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                                     const SizedBox(height: 2),
                                     if (full_name.isNotEmpty)
                                       Text(
-                                        full_name + "'Heat Pump",
+                                        full_name + "'s Heat Pump",
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
@@ -1173,36 +1335,38 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                     //     ),
                     //   ),
                     // ),
-                    weatherList.isEmpty
-                        ? const SizedBox()
-                        : InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => WeatherForecastScreen(),
-                                ),
-                              );
-                            },
-                            child: _buildListTile(
-                              icon: getWeatherIcon(weatherList[0]["condition"]),
-                              title: "OUTSIDE - ${location.toUpperCase()}",
-                              subtitle:
-                                  "${toTitleCase(weatherList[0]["condition"])} • ${weatherList[0]["precipitation_probability_max"]}% rain • Wind ${weatherList[0]["wind_gusts_10m_max"]} km/h",
-                              trailing: const Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                color: Colors.white70,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                    // _buildListTile(
-                    //   icon: Icons.calendar_today_outlined,
-                    //   title: "NEXT SCHEDULE",
-                    //   subtitle: "Daytime eco • Today • 09:00",
-                    //   trailing: Icon(Icons.chevron_right, color: textGrey),
-                    // ),
+                    // weatherList.isEmpty
+                    //     ? const SizedBox()
+                    //     : InkWell(
+                    //         borderRadius: BorderRadius.circular(16),
+                    //         onTap: () {
+                    //           Navigator.push(
+                    //             context,
+                    //             MaterialPageRoute(
+                    //               builder: (_) => WeatherForecastScreen(),
+                    //             ),
+                    //           );
+                    //         },
+                    //         child: _buildListTile(
+                    //           icon: getWeatherIcon(weatherList[0]["condition"]),
+                    //           title: "OUTSIDE - ${location.toUpperCase()}",
+                    //           subtitle:
+                    //               "${toTitleCase(weatherList[0]["condition"])} • ${weatherList[0]["precipitation_probability_max"]}% rain • Wind ${weatherList[0]["wind_gusts_10m_max"]} km/h",
+                    //           trailing: const Icon(
+                    //             Icons.arrow_forward_ios_rounded,
+                    //             color: Colors.white70,
+                    //             size: 18,
+                    //           ),
+                    //         ),
+                    //       ),
+                    if (firstSchedule != null)
+                      _buildListTile(
+                        icon: Icons.calendar_today_outlined,
+                        title: "NEXT SCHEDULE",
+                        subtitle:
+                        "${toTitleCase(firstSchedule!.title)} • ${toTitleCase(firstSchedule!.mode)} • ${firstSchedule!.targetTemp}°C \n"
+                            "${getNextScheduleDay(firstSchedule!)} • ${firstSchedule!.startTime} ",
+                      ),
                     // _buildListTile(
                     //   icon: Icons.notifications_none,
                     //   title: "1 ACTIVE ALERT",
@@ -1431,7 +1595,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],

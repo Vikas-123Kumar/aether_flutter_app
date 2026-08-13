@@ -368,49 +368,207 @@ class FullScreenScannerPage extends StatefulWidget {
 class _FullScreenScannerPageState extends State<FullScreenScannerPage> {
   bool isNavigating = false;
 
+  // 1. Define the controller and restrict the format to qrCode only
+  final MobileScannerController cameraController = MobileScannerController(
+    formats: const [BarcodeFormat.qrCode],
+  );
+
+  @override
+  void dispose() {
+    // 2. Remember to dispose of the controller to free up resources
+    cameraController.dispose();
+    super.dispose();
+  }
+
+  void _showInvalidQrDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D1E2F),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: const Color(0xFF1E4563),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF299DEB).withOpacity(0.20),
+                  blurRadius: 25,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Warning icon
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF132F45),
+                    border: Border.all(
+                      color: const Color(0xFF299DEB).withOpacity(0.35),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.qr_code_2,
+                    color: Color(0xFF38B6F6),
+                    size: 30,
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // Title
+                const Text(
+                  'Invalid QR Code',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                // Message
+                const Text(
+                  'The scanned QR code is not valid.\nPlease try again.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFFB8C6D1),
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+
+                const SizedBox(height: 22),
+
+                // OK button
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          Color(0xFF38B6F6),
+                          Color(0xFF4C8FFB),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(13),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF299DEB).withOpacity(0.30),
+                          blurRadius: 12,
+                          spreadRadius: 1,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(13),
+                        onTap: () {
+                          Navigator.pop(context);
+                          setState(() => isNavigating = false);
+                        },
+                        child: const Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'OK',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(width: 7),
+                              Icon(
+                                Icons.arrow_forward,
+                                size: 16,
+                                color: Colors.black,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. The Camera Feed
+          // 3. Pass the controller to the MobileScanner
           MobileScanner(
+            controller: cameraController,
             onDetect: (capture) {
               final List<Barcode> barcodes = capture.barcodes;
               if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
-                String rawData = barcodes.first.rawValue!;
-                String extractedSerialNumber =
-                    rawData; // Default to the full string just in case
+                if (isNavigating) return;
 
-                // If the QR code contains a semicolon, split it and take the second part
+                String rawData = barcodes.first.rawValue!;
+                bool isValid = false;
+                String extractedSerialNumber = "";
+
                 if (rawData.contains(';')) {
                   List<String> parts = rawData.split(';');
                   if (parts.length > 1) {
-                    extractedSerialNumber = parts[1].trim(); // Grabs '3713242'
+                    String secondPart = parts[1].trim();
+
+                    if (RegExp(r'^[0-9]+$').hasMatch(secondPart)) {
+                      isValid = true;
+                      extractedSerialNumber = secondPart;
+                    }
                   }
                 }
 
-                if (!isNavigating) {
-                  setState(() => isNavigating = true);
-                  // Navigate to the next screen with only the extracted 7-digit SN
+                setState(() => isNavigating = true);
+
+                if (isValid) {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
                       builder: (context) => ConnectScreen(
                         fromNoDevice: true,
-                        manualEnter:false,
+                        manualEnter: false,
                         serial_number: extractedSerialNumber,
                       ),
-                      // builder: (context) => StepFiveScreen(serialNumber: barcodes.first.rawValue!),
                     ),
                   );
+                } else {
+                  _showInvalidQrDialog();
                 }
               }
             },
           ),
 
-          // 2. Custom Overlay (Darkened edges with a clear center cutout)
+          // Custom Overlay (Darkened edges with a clear center cutout)
           Container(
             decoration: ShapeDecoration(
               shape: QrScannerOverlayShape(
@@ -424,7 +582,7 @@ class _FullScreenScannerPageState extends State<FullScreenScannerPage> {
             ),
           ),
 
-          // 3. UI Elements (Back button and instructions)
+          // UI Elements (Back button and instructions)
           SafeArea(
             child: Column(
               children: [
@@ -462,7 +620,6 @@ class _FullScreenScannerPageState extends State<FullScreenScannerPage> {
     );
   }
 }
-
 // Custom Shape to create the dark overlay with a transparent hole in the middle
 class QrScannerOverlayShape extends ShapeBorder {
   final Color borderColor;

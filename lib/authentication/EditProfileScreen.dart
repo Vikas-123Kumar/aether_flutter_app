@@ -319,14 +319,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                     // STATE DROPDOWN
                     _buildStateDropdownRow("STATE", Icons.map_outlined),
-                    _buildDivider(),
-
-                    // READ-ONLY TIMEZONE / ZONE FIELD
-                    _buildReadOnlyRow(
-                      "TIMEZONE",
-                      Icons.access_time,
-                      _timezoneCtrl,
-                    ),
+                    // _buildDivider(),
+                    //
+                    // // READ-ONLY TIMEZONE / ZONE FIELD
+                    // _buildReadOnlyRow(
+                    //   "TIMEZONE",
+                    //   Icons.access_time,
+                    //   _timezoneCtrl,
+                    // ),
                   ],
                 ),
               ),
