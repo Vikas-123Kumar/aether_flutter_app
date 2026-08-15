@@ -29,6 +29,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   String unit = "";
   int targetTemp = 35;
   String selectedMode = "ECO";
+  String modeDetails = "";
   bool isUpdatingTemp = false;
   String mode = "ECO";
   bool isLoading = false;
@@ -46,6 +47,8 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
   bool ismodeclick = false;
   bool mode_update_first = false;
   String full_name = "";
+  bool is_holiday_mode = false;
+  bool _isUpdatingHolidayMode = false;
 
   // New Global Controls for API Triggers
   bool _isProcessing = false;
@@ -177,25 +180,39 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           final setPointDatamiddle = deviceData.firstWhere(
             (item) => item.itemid == "15",
           );
+          final setPointDataHoliday = deviceData.firstWhere(
+            (item) => item.itemid == "9",
+          );
           if (!mode_update_first) {
             mode_update_first = true;
             if (setPointDataMode.val == "2") {
               selectedMode = "Eco";
+              modeDetails = getModeDetails(selectedMode);
             } else if (setPointDataMode.val == "0") {
               selectedMode = "Standard";
+              modeDetails = getModeDetails(selectedMode);
             } else if (setPointDataMode.val == "1") {
               selectedMode = "Boost";
+              modeDetails = getModeDetails(selectedMode);
             }
           } else if (is_power_update) {
             is_power_update = false;
             mode_update_first = true;
             if (setPointDataMode.val == "2") {
               selectedMode = "Eco";
+              modeDetails = getModeDetails(selectedMode);
             } else if (setPointDataMode.val == "0") {
               selectedMode = "Standard";
+              modeDetails = getModeDetails(selectedMode);
             } else if (setPointDataMode.val == "1") {
               selectedMode = "Boost";
+              modeDetails = getModeDetails(selectedMode);
             }
+          }
+          if (setPointDataHoliday.val == "0") {
+            is_holiday_mode = false;
+          } else {
+            is_holiday_mode = true;
           }
           pre_mode = selectedMode;
           currentTemp = setPointDatamiddle.val;
@@ -288,6 +305,20 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     });
   }
 
+  String getModeDetails(String mode) {
+    switch (mode) {
+      case "Eco":
+        return "ECO RANGE • 35°C - 55°C";
+      case "Standard":
+        return "STANDARD RANGE • 35°C - 60°C";
+        ;
+      case "Boost":
+        return "BOOST RANGE • 35°C - 70°C";
+      default:
+        return "ECO RANGE • 35°C - 55°C";
+    }
+  }
+
   Future<void> getDeviceModeData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -326,10 +357,13 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           if (!ismodeclick && !change_target) {
             if (setPointDataMode.val == "2") {
               selectedMode = "Eco";
+              modeDetails = getModeDetails(selectedMode);
             } else if (setPointDataMode.val == "0") {
               selectedMode = "Standard";
+              modeDetails = getModeDetails(selectedMode);
             } else if (setPointDataMode.val == "1") {
               selectedMode = "Boost";
+              modeDetails = getModeDetails(selectedMode);
             }
             currentTemp = setPointDatamiddle.val;
             targetTemp = int.parse(setPointData.val);
@@ -467,7 +501,9 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     if (_isProcessing) return;
     // NEW
     setState(() {
-      selectedMode = mode; // Keep selected mode immediately
+      selectedMode = mode;
+      modeDetails = getModeDetails(selectedMode);
+      // Keep selected mode immediately
     });
     String device_id = DeviceInformations.act_device_id;
     String api_mode = "0";
@@ -570,6 +606,214 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     }
   }
 
+  Future<void> _showHolidayModeConfirmation(bool value) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF111C2E),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFF1E293B), width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.35),
+                  blurRadius: 25,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon
+                Container(
+                  height: 56,
+                  width: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    value ? Icons.flight_takeoff_outlined : Icons.home_outlined,
+                    color: Colors.blue,
+                    size: 28,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                Text(
+                  value ? "Enable Holiday Mode?" : "Disable Holiday Mode?",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                Text(
+                  value
+                      ? "The tank temperature will be maintained at 50°C while you're away."
+                      : "Holiday Mode will be turned off and your normal temperature settings will resume.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.65),
+                    fontSize: 12,
+                    height: 1.5,
+                  ),
+                ),
+
+                const SizedBox(height: 22),
+
+                Row(
+                  children: [
+                    // Cancel
+                    Expanded(
+                      child: SizedBox(
+                        height: 44,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.pop(context, false);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: Colors.white.withOpacity(0.15),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            "Cancel",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    // Confirm
+                    Expanded(
+                      child: SizedBox(
+                        height: 44,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context, true);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            value ? "Enable" : "Disable",
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // Only call APIs after user confirms
+    if (confirmed == true) {
+      await updateHolidayMode();
+      await updateHolidayTemperature();
+    }
+  }
+
+  Future<void> updateHolidayMode() async {
+    ismodeclick = false;
+    if (!is_can_control) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text("You don't have access to control the device."),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      return;
+    }
+    if (!isDeviceActive) {
+      showSnacBar();
+      return;
+    }
+
+    if (_isProcessing) return; // Block fast multi-clicks
+    //_startCooldown();
+
+    String deviceId = DeviceInformations.act_device_id;
+    final prefs = await SharedPreferences.getInstance();
+    String token = prefs.getString("token") ?? "";
+    int apiMode = is_holiday_mode ? 0 : 1;
+
+    setState(() {
+      is_holiday_mode = !is_holiday_mode;
+    });
+
+    try {
+      final response = await http.put(
+        Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({"devid": deviceId, "itemid": "9", "value": apiMode}),
+      );
+
+      if (response.statusCode == 200) {
+        change_target = false;
+        // await waitForDeviceUpdate(
+        //   itemId: "1",
+        //   expectedValue: apiMode.toString(),
+        // );
+        _deviceDataTimer?.cancel();
+
+        // Schedule getDeviceData after 5 seconds
+        _deviceDataTimer = Timer(const Duration(seconds: 5), () async {
+          is_power_update = true;
+          await getDeviceData();
+        });
+      } else {
+        setState(() {
+          is_holiday_mode = !is_holiday_mode;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        is_holiday_mode = !is_holiday_mode;
+      });
+    }
+  }
+
   void onTemperatureChanged(int value) {
     ismodeclick = false;
     change_target = true;
@@ -595,6 +839,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
   ScheduleItem? firstSchedule;
   bool isScheduleLoading = true;
+
   String getNextScheduleDay(ScheduleItem schedule) {
     if (schedule.days.isEmpty) {
       return "No day";
@@ -626,8 +871,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     final timeParts = schedule.startTime.split(":");
 
     final hour = int.tryParse(timeParts[0]) ?? 0;
-    final minute =
-    timeParts.length > 1 ? int.tryParse(timeParts[1]) ?? 0 : 0;
+    final minute = timeParts.length > 1 ? int.tryParse(timeParts[1]) ?? 0 : 0;
 
     DateTime? nextDate;
 
@@ -686,6 +930,7 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
     return weekdayNames[nextDate.weekday - 1];
   }
+
   Future<void> fetchSchedules() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -792,6 +1037,60 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
           "devid": device_id,
           "itemid": tempItem.itemid,
           "value": value.toString(),
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data["data"] != null && data["data"]["status"] == "106") {
+          final apiMsg = data['data']?['msg'] ?? "Something went wrong";
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(apiMsg), backgroundColor: Colors.red),
+          );
+        } else {
+          // await waitForDeviceUpdate(
+          //   itemId: "3",
+          //   expectedValue: value.toString(),
+          // );
+          //getDeviceData();
+        }
+      }
+    } catch (e) {
+      print("TEMP UPDATE ERROR => $e");
+    } finally {
+      setState(() {
+        isUpdatingTemp = false;
+      });
+    }
+  }
+
+  Future<void> updateHolidayTemperature() async {
+    if (!isDeviceActive) {
+      showSnacBar();
+      return;
+    }
+    String device_id = DeviceInformations.act_device_id;
+
+    setState(() {
+      isUpdatingTemp = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String token = prefs.getString("token") ?? "";
+      final tempItem = deviceData.firstWhere((item) => item.itemid == "10");
+
+      final response = await http.put(
+        Uri.parse("https://aetherone.com.au/api/v1/heat-pump-2/control"),
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({
+          "devid": device_id,
+          "itemid": tempItem.itemid,
+          "value": "50",
         }),
       );
 
@@ -1277,8 +1576,16 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 5),
+                    Text(
+                      modeDetails,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 10,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
 
                     /// 🔘 MODE BUTTONS
                     Opacity(
@@ -1309,63 +1616,106 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
 
-                    /// 📋 LIST TILES
-                    // _buildListTile(
-                    //   icon: Icons.ac_unit,
-                    //   title: "Defrost cycle",
-                    //   subtitle: "Tap to start a manual defrost",
-                    //   trailing: Container(
-                    //     padding: const EdgeInsets.symmetric(
-                    //       horizontal: 10,
-                    //       vertical: 4,
-                    //     ),
-                    //     decoration: BoxDecoration(
-                    //       color: Colors.white.withOpacity(0.1),
-                    //       borderRadius: BorderRadius.circular(10),
-                    //     ),
-                    //     child: const Text(
-                    //       "OFF",
-                    //       style: TextStyle(
-                    //         color: Colors.white70,
-                    //         fontSize: 10,
-                    //         fontWeight: FontWeight.bold,
-                    //       ),
-                    //     ),
-                    //   ),
-                    // ),
-                    // weatherList.isEmpty
-                    //     ? const SizedBox()
-                    //     : InkWell(
-                    //         borderRadius: BorderRadius.circular(16),
-                    //         onTap: () {
-                    //           Navigator.push(
-                    //             context,
-                    //             MaterialPageRoute(
-                    //               builder: (_) => WeatherForecastScreen(),
-                    //             ),
-                    //           );
-                    //         },
-                    //         child: _buildListTile(
-                    //           icon: getWeatherIcon(weatherList[0]["condition"]),
-                    //           title: "OUTSIDE - ${location.toUpperCase()}",
-                    //           subtitle:
-                    //               "${toTitleCase(weatherList[0]["condition"])} • ${weatherList[0]["precipitation_probability_max"]}% rain • Wind ${weatherList[0]["wind_gusts_10m_max"]} km/h",
-                    //           trailing: const Icon(
-                    //             Icons.arrow_forward_ios_rounded,
-                    //             color: Colors.white70,
-                    //             size: 18,
-                    //           ),
-                    //         ),
-                    //       ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF111C2E),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFF1E293B),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            height: 28,
+                            width: 28,
+                            decoration: BoxDecoration(
+                              color: is_holiday_mode
+                                  ? Colors.blue.withOpacity(.15)
+                                  : Colors.grey.withOpacity(.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.flight_takeoff_outlined,
+                              color: Colors.blue,
+                              size: 16,
+                            ),
+                          ),
+
+                          const SizedBox(width: 10),
+
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  "Holiday Mode",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "Hold the tank at 50°C while you're away",
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(.6),
+                                    fontSize: 9,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(width: 8),
+
+                          SizedBox(
+                            height: 30,
+                            child: _isUpdatingHolidayMode
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Switch(
+                                    value: is_holiday_mode,
+                                    activeColor: Colors.blue,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    onChanged: (value) async {
+                                      await _showHolidayModeConfirmation(value);
+                                    },
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
                     if (firstSchedule != null)
                       _buildListTile(
                         icon: Icons.calendar_today_outlined,
                         title: "NEXT SCHEDULE",
                         subtitle:
-                        "${toTitleCase(firstSchedule!.title)} • ${toTitleCase(firstSchedule!.mode)} • ${firstSchedule!.targetTemp}°C \n"
-                            "${getNextScheduleDay(firstSchedule!)} • ${firstSchedule!.startTime} ",
+                            "${toTitleCase(firstSchedule!.title)} • "
+                            "${toTitleCase(firstSchedule!.mode)} • "
+                            "${firstSchedule!.targetTemp}°C\n"
+                            "${getNextScheduleDay(firstSchedule!)} • "
+                            "${firstSchedule!.startTime}",
                       ),
                     // _buildListTile(
                     //   icon: Icons.notifications_none,
@@ -1561,11 +1911,11 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
     Color? outlineColor,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color:
               outlineColor?.withOpacity(0.4) ?? Colors.white.withOpacity(0.03),
@@ -1573,35 +1923,55 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, color: outlineColor ?? accentBlue, size: 24),
-          const SizedBox(width: 16),
+          Container(
+            height: 28,
+            width: 28,
+            decoration: BoxDecoration(
+              color: (outlineColor ?? accentBlue).withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: outlineColor ?? accentBlue, size: 16),
+          ),
+
+          const SizedBox(width: 10),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   title.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: outlineColor ?? textGrey,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 10,
-                    letterSpacing: 0.5,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 9,
+                    letterSpacing: 0.4,
                   ),
                 ),
-                const SizedBox(height: 4),
+
+                const SizedBox(height: 3),
+
                 Text(
                   subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    height: 1.3,
                   ),
                 ),
               ],
             ),
           ),
-          if (trailing != null) trailing,
+
+          if (trailing != null) ...[const SizedBox(width: 8), trailing],
         ],
       ),
     );
