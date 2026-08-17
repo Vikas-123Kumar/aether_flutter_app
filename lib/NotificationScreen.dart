@@ -275,7 +275,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  "We'll inform you when there are new weather updates.",
+                  "We'll notify you when there's an update.",
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                 ),

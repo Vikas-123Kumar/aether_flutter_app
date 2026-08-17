@@ -68,7 +68,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     );
     _fetchProfile();
     getFamilyMembers();
-    getdeviceDetails();
+
     _fetchSettings();
   }
 
@@ -114,21 +114,31 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     }
   }
 
-  String system_id = "", installed_time = "";
+  String system_id = "", installed_time = "", getinstall_time = "";
   int is_can_control = DeviceInformations.is_device_access;
 
   String getFormattedLocalTime(String utcTimeString) {
-    // 1. Format for strict UTC parsing
-    String formattedUtcStr = utcTimeString.replaceAll(' ', 'T') + 'Z';
+    // Parse UTC time directly
+    DateTime parsedUtcTime = DateTime.parse(utcTimeString);
 
-    // 2. Parse to DateTime
-    DateTime parsedUtcTime = DateTime.parse(formattedUtcStr);
-
-    // 3. Convert to Local Time
+    // Convert UTC to local time
     DateTime localTime = parsedUtcTime.toLocal();
 
-    // 4. Format to "Month Day, Year" (e.g., "August 5, 26")
+    // Format: June 17, 26
     return DateFormat('MMMM d, yy').format(localTime);
+  }
+
+  String getFormattedInstallationDate(
+    dynamic installationDate,
+    dynamic createdAt,
+  ) {
+    if (installationDate != null && installationDate.toString().isNotEmpty) {
+      final date = DateTime.parse(installationDate.toString());
+
+      return DateFormat('MMMM d, yy').format(date);
+    }
+
+    return getFormattedLocalTime(createdAt.toString());
   }
 
   Future<void> getdeviceDetails() async {
@@ -155,9 +165,10 @@ class _ProfileScreenState extends State<NewProfileScreen> {
           final installer = data["device"]["installer"];
           system_id = data["device"]["device_id"];
           //is_can_control = data["device"]["is_device_access"];
-          installed_time = getFormattedLocalTime(
-            data["device"]["last_synced_at"],
-          );
+          // installed_time = getFormattedLocalTime(
+          //   data["device"]["last_synced_at"],
+          // );
+          installed_time = getinstall_time;
           if (installer != null) {
             setState(() {
               installerName = installer["installer_name"] ?? "";
@@ -216,6 +227,14 @@ class _ProfileScreenState extends State<NewProfileScreen> {
           state = userData["state"] ?? "";
           timezone = userData["timezone"] ?? "";
           userId = userData["id"].toString();
+          final installationDate = userData["installation_date"];
+
+          getinstall_time = getFormattedInstallationDate(
+            userData["installation_date"],
+            userData["created_at"],
+          );
+          print("date from api" + getinstall_time);
+          getdeviceDetails();
 
           /// First letter for avatar
           firstLetter = name.isNotEmpty ? name[0].toUpperCase() : "";
@@ -236,7 +255,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-      //  builder: (_) => const ConnectScreen(fromNoDevice: true),
+        //  builder: (_) => const ConnectScreen(fromNoDevice: true),
         builder: (_) => const NewControlDevice(),
       ),
     );
@@ -585,10 +604,7 @@ class _ProfileScreenState extends State<NewProfileScreen> {
                 gradient: const LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
-                  colors: [
-                    Color(0xFF38B6F6),
-                    Color(0xFF28A9EF),
-                  ],
+                  colors: [Color(0xFF38B6F6), Color(0xFF28A9EF)],
                 ),
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [

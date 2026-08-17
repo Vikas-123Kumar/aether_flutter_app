@@ -21,7 +21,7 @@ class _SignupscreenState extends State<Signupscreen> {
   bool isPasswordVisible = false;
   final _formKey = GlobalKey<FormState>();
   String selectedUserType = "end_user";
-
+  final dateOfBirthController = TextEditingController();
   final installerIdController = TextEditingController();
   final companyNameController = TextEditingController();
   final fullNameController = TextEditingController();
@@ -32,7 +32,7 @@ class _SignupscreenState extends State<Signupscreen> {
   final addressController = TextEditingController();
   final timeZoneController = TextEditingController();
   final confirmPasswordController = TextEditingController();
-
+  DateTime? selectedDate;
   bool isLoading = false;
   bool obscurePassword = true;
   bool obscureConfirm = true;
@@ -85,7 +85,14 @@ class _SignupscreenState extends State<Signupscreen> {
     final String installerId = installerIdController.text.trim();
     final String companyName = companyNameController.text.trim();
     bool connected = await InternetService().hasInternet();
+    String? installation_date;
 
+    if (selectedDate != null) {
+      installation_date =
+      "${selectedDate!.year}-"
+          "${selectedDate!.month.toString().padLeft(2, '0')}-"
+          "${selectedDate!.day.toString().padLeft(2, '0')}";
+    }
     if (!connected) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -140,6 +147,7 @@ class _SignupscreenState extends State<Signupscreen> {
       if (selectedUserType == "end_user") {
         body["address"] = address;
         body["timezone"] = timeZone;
+        body["installation_date"] = installation_date;
       }
 
       if (selectedUserType == "installer") {
@@ -149,33 +157,33 @@ class _SignupscreenState extends State<Signupscreen> {
         body["timezone"] = timeZone;
       }
 
-      print("REQUEST JSON => $body");
-
-      final response = await api.post("signUp", body);
-
-      final responseOtp = await api.post("sendOtp", {"email": email});
-
-      print("Signup Response => $response");
-      print("OTP Response => $responseOtp");
-
-      setState(() {
-        isLoading = false;
-      });
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Registration Successful")),
-        );
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => OtpScreen(email: email)),
-        );
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(response.data.toString())));
-      }
+       print("REQUEST JSON => $body");
+      //
+      // final response = await api.post("signUp", body);
+      //
+      // final responseOtp = await api.post("sendOtp", {"email": email});
+      //
+      // print("Signup Response => $response");
+      // print("OTP Response => $responseOtp");
+      //
+      // setState(() {
+      //   isLoading = false;
+      // });
+      //
+      // if (response.statusCode == 200) {
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     const SnackBar(content: Text("Registration Successful")),
+      //   );
+      //
+      //   Navigator.pushReplacement(
+      //     context,
+      //     MaterialPageRoute(builder: (context) => OtpScreen(email: email)),
+      //   );
+      // } else {
+      //   ScaffoldMessenger.of(
+      //     context,
+      //   ).showSnackBar(SnackBar(content: Text(response.data.toString())));
+      // }
     } catch (e) {
       setState(() {
         isLoading = false;
@@ -464,7 +472,12 @@ class _SignupscreenState extends State<Signupscreen> {
                     "Address",
                     Icons.home_outlined,
                   ),
-
+                  if(selectedUserType=="end_user")
+                    _dateInput(
+                      dateOfBirthController,
+                      "Installation Date",
+                      Icons.cake_outlined,
+                    ),
                   if (selectedUserType == "installer") ...[
                     _input(
                       installerIdController,
@@ -605,7 +618,97 @@ class _SignupscreenState extends State<Signupscreen> {
       ),
     );
   }
+  Widget _dateInput(
+      TextEditingController controller,
+      String hint,
+      IconData icon,
+      ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: controller,
+        readOnly: true,
+        style: const TextStyle(color: Colors.white),
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return "Required";
+          }
+          return null;
+        },
+        onTap: () async {
+          final DateTime? pickedDate = await showDatePicker(
+          context: context,
+          initialDate: selectedDate ?? DateTime.now(),
+          firstDate: DateTime(1900),
+          lastDate: DateTime(2100),
+          builder: (context, child) {
+          return Theme(
+          data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.dark(
+          primary: Colors.blueAccent,
+          surface: Color(0xFF121A2F),
+          onSurface: Colors.white,
+          ),
+          ),
+          child: child!,
+          );
+          },
+          );
 
+          if (pickedDate != null) {
+            setState(() {
+              selectedDate = pickedDate;
+
+              // Display format: 2026-08-14
+              controller.text =
+              "${pickedDate.year}-"
+                  "${pickedDate.month.toString().padLeft(2, '0')}-"
+                  "${pickedDate.day.toString().padLeft(2, '0')}";
+            });
+          }
+        },
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: Colors.grey),
+
+          prefixIcon: Icon(
+            icon,
+            color: Colors.blueAccent,
+            size: 22,
+          ),
+
+          suffixIcon: const Icon(
+            Icons.calendar_today,
+            color: Colors.blueAccent,
+            size: 20,
+          ),
+
+          filled: true,
+          fillColor: const Color(0xFF121A2F),
+
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
+
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: Colors.white.withOpacity(0.08),
+            ),
+          ),
+
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(
+              color: Colors.blueAccent,
+              width: 1.2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
   Widget _input(
       TextEditingController controller,
       String hint,

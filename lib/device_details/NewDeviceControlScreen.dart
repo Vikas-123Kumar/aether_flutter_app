@@ -1618,93 +1618,93 @@ class _ThermostatUIState extends State<NewDeviceControlScreen> {
 
                     const SizedBox(height: 12),
 
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF111C2E),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: const Color(0xFF1E293B),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            height: 28,
-                            width: 28,
-                            decoration: BoxDecoration(
-                              color: is_holiday_mode
-                                  ? Colors.blue.withOpacity(.15)
-                                  : Colors.grey.withOpacity(.15),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.flight_takeoff_outlined,
-                              color: Colors.blue,
-                              size: 16,
-                            ),
-                          ),
-
-                          const SizedBox(width: 10),
-
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  "Holiday Mode",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  "Hold the tank at 50°C while you're away",
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(.6),
-                                    fontSize: 9,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(width: 8),
-
-                          SizedBox(
-                            height: 30,
-                            child: _isUpdatingHolidayMode
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Switch(
-                                    value: is_holiday_mode,
-                                    activeColor: Colors.blue,
-                                    materialTapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                    onChanged: (value) async {
-                                      await _showHolidayModeConfirmation(value);
-                                    },
-                                  ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
+                    // Container(
+                    //   padding: const EdgeInsets.symmetric(
+                    //     horizontal: 14,
+                    //     vertical: 12,
+                    //   ),
+                    //   decoration: BoxDecoration(
+                    //     color: const Color(0xFF111C2E),
+                    //     borderRadius: BorderRadius.circular(14),
+                    //     border: Border.all(
+                    //       color: const Color(0xFF1E293B),
+                    //       width: 1,
+                    //     ),
+                    //   ),
+                    //   child: Row(
+                    //     children: [
+                    //       Container(
+                    //         height: 28,
+                    //         width: 28,
+                    //         decoration: BoxDecoration(
+                    //           color: is_holiday_mode
+                    //               ? Colors.blue.withOpacity(.15)
+                    //               : Colors.grey.withOpacity(.15),
+                    //           shape: BoxShape.circle,
+                    //         ),
+                    //         child: const Icon(
+                    //           Icons.flight_takeoff_outlined,
+                    //           color: Colors.blue,
+                    //           size: 16,
+                    //         ),
+                    //       ),
+                    //
+                    //       const SizedBox(width: 10),
+                    //
+                    //       Expanded(
+                    //         child: Column(
+                    //           crossAxisAlignment: CrossAxisAlignment.start,
+                    //           mainAxisSize: MainAxisSize.min,
+                    //           children: [
+                    //             const Text(
+                    //               "Holiday Mode",
+                    //               style: TextStyle(
+                    //                 color: Colors.white,
+                    //                 fontSize: 12,
+                    //                 fontWeight: FontWeight.w600,
+                    //               ),
+                    //             ),
+                    //             const SizedBox(height: 2),
+                    //             Text(
+                    //               "Hold the tank at 50°C while you're away",
+                    //               maxLines: 2,
+                    //               overflow: TextOverflow.ellipsis,
+                    //               style: TextStyle(
+                    //                 color: Colors.white.withOpacity(.6),
+                    //                 fontSize: 9,
+                    //               ),
+                    //             ),
+                    //           ],
+                    //         ),
+                    //       ),
+                    //
+                    //       const SizedBox(width: 8),
+                    //
+                    //       SizedBox(
+                    //         height: 30,
+                    //         child: _isUpdatingHolidayMode
+                    //             ? const SizedBox(
+                    //                 width: 20,
+                    //                 height: 20,
+                    //                 child: CircularProgressIndicator(
+                    //                   strokeWidth: 2,
+                    //                 ),
+                    //               )
+                    //             : Switch(
+                    //                 value: is_holiday_mode,
+                    //                 activeColor: Colors.blue,
+                    //                 materialTapTargetSize:
+                    //                     MaterialTapTargetSize.shrinkWrap,
+                    //                 onChanged: (value) async {
+                    //                   await _showHolidayModeConfirmation(value);
+                    //                 },
+                    //               ),
+                    //       ),
+                    //     ],
+                    //   ),
+                    // ),
+                    //
+                    // const SizedBox(height: 12),
 
                     if (firstSchedule != null)
                       _buildListTile(
