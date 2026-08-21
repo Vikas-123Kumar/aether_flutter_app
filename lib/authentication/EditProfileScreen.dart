@@ -181,18 +181,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+
+        // Important for iOS
+        centerTitle: false,
+        titleSpacing: 12,
+
         leadingWidth: 56,
         leading: Padding(
           padding: const EdgeInsets.only(left: 12.0),
           child: Container(
-            decoration: BoxDecoration(color: cardBg, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: cardBg,
+              shape: BoxShape.circle,
+            ),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
-              onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+              icon: const Icon(
+                Icons.arrow_back,
+                color: Colors.white,
+                size: 18,
+              ),
+              onPressed: _isLoading
+                  ? null
+                  : () => Navigator.of(context).pop(),
             ),
           ),
         ),
+
         title: const Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -203,9 +219,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 fontSize: 18,
               ),
             ),
+            SizedBox(height: 2),
             Text(
               "Your system & account",
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+              ),
             ),
           ],
         ),

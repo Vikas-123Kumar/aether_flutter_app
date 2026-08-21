@@ -88,11 +88,21 @@ class _TransferScreenState extends State<TransferScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+
+        // Keep title aligned to the left on iOS
+        centerTitle: false,
+        titleSpacing: 8,
+
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Colors.white,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
+
         title: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
@@ -105,7 +115,10 @@ class _TransferScreenState extends State<TransferScreen> {
             ),
             Text(
               'Aether Home Heat Pump',
-              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 12,
+              ),
             ),
           ],
         ),

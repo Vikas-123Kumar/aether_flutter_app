@@ -564,10 +564,11 @@ class _ProfileScreenState extends State<NewProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0C101B),
-      appBar: AppBar(
+      appBar:AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
+        centerTitle: false,
         titleSpacing: 16,
 
         title: const Column(

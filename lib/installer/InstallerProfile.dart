@@ -256,20 +256,30 @@ class _ProfileScreenState extends State<Installerprofile> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        automaticallyImplyLeading: false,
+        centerTitle: false,
+        titleSpacing: 16,
+
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               "Profile",
               style: TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
               ),
             ),
+            SizedBox(height: 3),
             Text(
-              "Your installer account",
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+              "Your system & account",
+              style: TextStyle(
+                color: Color(0xFF7F8FA0),
+                fontSize: 11,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           ],
         ),

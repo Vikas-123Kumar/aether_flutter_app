@@ -122,12 +122,26 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
           Navigator.of(context).pop(true);
         }
       } else {
+        String errorMessage = "Server error: ${response.statusCode}";
+
+        try {
+          final errorData = jsonDecode(response.body);
+
+          if (errorData is Map<String, dynamic>) {
+            errorMessage =
+                errorData["message"] ??
+                    errorData["error"] ??
+                    errorMessage;
+          }
+        } catch (_) {}
+
         if (mounted) {
-          print("message${response.body} ");
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Server error: ${response.statusCode}")),
+            SnackBar(content: Text(errorMessage)),
           );
         }
+
+        print("API Error: ${response.body}");
       }
     } catch (e) {
       if (mounted) {
@@ -251,17 +265,31 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leadingWidth: 56,
+        // Keep title left-aligned on Android and iOS
+        centerTitle: false,
+        titleSpacing: 8,
         leading: Padding(
           padding: const EdgeInsets.only(left: 12.0),
           child: Container(
-            decoration: BoxDecoration(color: cardBg, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: cardBg,
+              shape: BoxShape.circle,
+            ),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
-              onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+              icon: const Icon(
+                Icons.arrow_back,
+                color: Colors.white,
+                size: 18,
+              ),
+              onPressed: _isLoading
+                  ? null
+                  : () => Navigator.of(context).pop(),
             ),
           ),
         ),
+
         title: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
@@ -274,7 +302,10 @@ class _CreateScheduleScreenState extends State<CreateScheduleScreen> {
             ),
             Text(
               "Heat your water on autopilot",
-              style: TextStyle(color: subTextColor, fontSize: 11),
+              style: TextStyle(
+                color: subTextColor,
+                fontSize: 11,
+              ),
             ),
           ],
         ),

@@ -332,6 +332,8 @@ class _ScheduleDashboardScreenState extends State<ScheduleDashboardScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: false,
+        titleSpacing: 14,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

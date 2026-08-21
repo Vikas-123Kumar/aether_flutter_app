@@ -7,6 +7,7 @@ import 'dart:convert';
 
 import 'package:untitled/authentication/OtpScreen.dart';
 import 'package:untitled/authentication/rest/APIService.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../InternetService.dart';
 
@@ -32,17 +33,25 @@ class _SignupscreenState extends State<Signupscreen> {
   final addressController = TextEditingController();
   final timeZoneController = TextEditingController();
   final confirmPasswordController = TextEditingController();
+  List<Map<String, dynamic>> addressSuggestions = [];
+
+  bool showSuggestions = false;
   DateTime? selectedDate;
   bool isLoading = false;
   bool obscurePassword = true;
   bool obscureConfirm = true;
   bool acceptedTerms = false;
   List<dynamic> states = [];
+  String termsUrl = "https://aetheraustralia.com.au/aether-smart/terms";
+  String privacyUrl = "https://aetheraustralia.com.au/aether-smart/privacy";
+  static const String googleApiKey = "AIzaSyBap7_btrN6XzsqMIDFKb_0xeeyOUysMGc";
+
   @override
   void initState() {
     super.initState();
     getStates();
   }
+
   Map<String, dynamic>? selectedState;
 
   Future<void> getStates() async {
@@ -67,6 +76,55 @@ class _SignupscreenState extends State<Signupscreen> {
       print("State API Error: $e");
     }
   }
+
+  Future<List<Map<String, dynamic>>> getAddressSuggestions(String input) async {
+    if (input.trim().isEmpty) {
+      return [];
+    }
+
+    final url = Uri.parse(
+      "https://places.googleapis.com/v1/places:autocomplete",
+    );
+
+    final response = await http.post(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": googleApiKey,
+        "X-Goog-FieldMask":
+            "suggestions.placePrediction.placeId,"
+            "suggestions.placePrediction.text,"
+            "suggestions.placePrediction.structuredFormat",
+      },
+      body: jsonEncode({"input": input}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      final suggestions = data["suggestions"] ?? [];
+
+      return List<Map<String, dynamic>>.from(
+        suggestions.map((item) {
+          final prediction = item["placePrediction"];
+
+          return {
+            "placeId": prediction["placeId"],
+            "text": prediction["text"]?["text"] ?? "",
+            "mainText":
+                prediction["structuredFormat"]?["mainText"]?["text"] ?? "",
+            "secondaryText":
+                prediction["structuredFormat"]?["secondaryText"]?["text"] ?? "",
+          };
+        }),
+      );
+    }
+
+    print("Autocomplete error: ${response.body}");
+
+    return [];
+  }
+
   // 🔥 API CALL
   Future<void> sendData() async {
     if (!_formKey.currentState!.validate()) {
@@ -89,16 +147,14 @@ class _SignupscreenState extends State<Signupscreen> {
 
     if (selectedDate != null) {
       installation_date =
-      "${selectedDate!.year}-"
+          "${selectedDate!.year}-"
           "${selectedDate!.month.toString().padLeft(2, '0')}-"
           "${selectedDate!.day.toString().padLeft(2, '0')}";
     }
     if (!connected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("No Internet Connection"),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("No Internet Connection")));
       return;
     }
     if (!acceptedTerms) {
@@ -157,33 +213,33 @@ class _SignupscreenState extends State<Signupscreen> {
         body["timezone"] = timeZone;
       }
 
-       print("REQUEST JSON => $body");
-      //
-      // final response = await api.post("signUp", body);
-      //
-      // final responseOtp = await api.post("sendOtp", {"email": email});
-      //
-      // print("Signup Response => $response");
-      // print("OTP Response => $responseOtp");
-      //
-      // setState(() {
-      //   isLoading = false;
-      // });
-      //
-      // if (response.statusCode == 200) {
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     const SnackBar(content: Text("Registration Successful")),
-      //   );
-      //
-      //   Navigator.pushReplacement(
-      //     context,
-      //     MaterialPageRoute(builder: (context) => OtpScreen(email: email)),
-      //   );
-      // } else {
-      //   ScaffoldMessenger.of(
-      //     context,
-      //   ).showSnackBar(SnackBar(content: Text(response.data.toString())));
-      // }
+      print("REQUEST JSON => $body");
+
+      final response = await api.post("signUp", body);
+
+      final responseOtp = await api.post("sendOtp", {"email": email});
+
+      print("Signup Response => $response");
+      print("OTP Response => $responseOtp");
+
+      setState(() {
+        isLoading = false;
+      });
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registration Successful")),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => OtpScreen(email: email)),
+        );
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(response.data.toString())));
+      }
     } catch (e) {
       setState(() {
         isLoading = false;
@@ -192,6 +248,21 @@ class _SignupscreenState extends State<Signupscreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Exception: $e")));
+    }
+  }
+
+  Future<void> _openUrl(String url) async {
+    final Uri uri = Uri.parse(url);
+    try {
+      final bool launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        debugPrint("Could not launch $url");
+      }
+    } catch (e) {
+      debugPrint("Error launching URL: $e");
     }
   }
 
@@ -278,160 +349,144 @@ class _SignupscreenState extends State<Signupscreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  _input(
-                    fullNameController,
-                    "Full Name",
-                    Icons.person_outline,
-                  ),
+                  _input(fullNameController, "Full Name", Icons.person_outline),
 
-                  _input(
-                    emailController,
-                    "Email",
-                    Icons.email_outlined,
-                  ),
-                  _input(
-                    phoneController,
-                    "Phone",
-                    Icons.phone_outlined,
-                  ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButtonFormField2<Map<String, dynamic>>(
-                      isExpanded: true,
-                      value: selectedState,
+                  _input(emailController, "Email", Icons.email_outlined),
+                  _input(phoneController, "Phone", Icons.phone_outlined),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButtonFormField2<Map<String, dynamic>>(
+                        isExpanded: true,
+                        value: selectedState,
 
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFF121A2F),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 1,
-                          vertical: 14,
-                        ),
-
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide.none,
-                        ),
-
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color: Colors.white.withOpacity(0.08),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: const Color(0xFF121A2F),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 1,
+                            vertical: 14,
                           ),
-                        ),
 
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: Colors.blueAccent,
-                            width: 1.2,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
                           ),
-                        ),
-                      ),
 
-                      hint: Row(
-                        children: const [
-                          Icon(
-                            Icons.location_city_outlined,
-                            color: Colors.blueAccent,
-                            size: 20,
-                          ),
-                          SizedBox(width: 15),
-                          Text(
-                            "Select State",
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 16,
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(
+                              color: Colors.white.withOpacity(0.08),
                             ),
                           ),
-                        ],
-                      ),
 
-                      buttonStyleData: const ButtonStyleData(
-                        height: 32,
-                        padding: EdgeInsets.zero,
-                      ),
-
-                      iconStyleData: const IconStyleData(
-                        icon: Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: Colors.white,
-                        ),
-                      ),
-
-                      dropdownStyleData: DropdownStyleData(
-                        maxHeight: 250,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF121A2F),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-
-                      menuItemStyleData: const MenuItemStyleData(
-                        height: 50,
-                      ),
-
-                      items: states.map((state) {
-                        return DropdownMenuItem<Map<String, dynamic>>(
-                          value: state,
-                          child: Row(
-                            children: [
-
-                              Expanded(
-                                child: Text(
-                                  state["state_name"],
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(
+                              color: Colors.blueAccent,
+                              width: 1.2,
+                            ),
                           ),
-                        );
-                      }).toList(),
+                        ),
 
-                      selectedItemBuilder: (context) {
-                        return states.map<Widget>((state) {
-                          return Row(
-                            children: [
-                              const Icon(
-                                Icons.location_city_outlined,
-                                color: Colors.blueAccent,
-                                size: 20,
+                        hint: Row(
+                          children: const [
+                            Icon(
+                              Icons.location_city_outlined,
+                              color: Colors.blueAccent,
+                              size: 20,
+                            ),
+                            SizedBox(width: 15),
+                            Text(
+                              "Select State",
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 16,
                               ),
-                              const SizedBox(width: 15),
-                              Expanded(
-                                child: Text(
-                                  state["state_name"],
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
+                            ),
+                          ],
+                        ),
+
+                        buttonStyleData: const ButtonStyleData(
+                          height: 32,
+                          padding: EdgeInsets.zero,
+                        ),
+
+                        iconStyleData: const IconStyleData(
+                          icon: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+
+                        dropdownStyleData: DropdownStyleData(
+                          maxHeight: 250,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF121A2F),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+
+                        menuItemStyleData: const MenuItemStyleData(height: 50),
+
+                        items: states.map((state) {
+                          return DropdownMenuItem<Map<String, dynamic>>(
+                            value: state,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    state["state_name"],
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           );
-                        }).toList();
-                      },
+                        }).toList(),
 
-                      onChanged: (value) {
-                        setState(() {
-                          selectedState = value;
+                        selectedItemBuilder: (context) {
+                          return states.map<Widget>((state) {
+                            return Row(
+                              children: [
+                                const Icon(
+                                  Icons.location_city_outlined,
+                                  color: Colors.blueAccent,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 15),
+                                Expanded(
+                                  child: Text(
+                                    state["state_name"],
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList();
+                        },
 
-                          stateController.text =
-                              value?["state_name"] ?? "";
+                        onChanged: (value) {
+                          setState(() {
+                            selectedState = value;
 
-                          timeZoneController.text =
-                              value?["time_zone"] ?? "";
-                        });
-                      },
+                            stateController.text = value?["state_name"] ?? "";
+
+                            timeZoneController.text = value?["time_zone"] ?? "";
+                          });
+                        },
+                      ),
                     ),
                   ),
-                ),
+
                   // Padding(
                   //   padding: const EdgeInsets.only(bottom: 12),
                   //   child: TextFormField(
@@ -466,13 +521,9 @@ class _SignupscreenState extends State<Signupscreen> {
                   //     ),
                   //   ),
                   // ),
-
-                  _input(
-                    addressController,
-                    "Address",
-                    Icons.home_outlined,
-                  ),
-                  if(selectedUserType=="end_user")
+                  //_input(addressController, "Address", Icons.home_outlined),
+                  _addressInput(),
+                  if (selectedUserType == "end_user")
                     _dateInput(
                       dateOfBirthController,
                       "Installation Date",
@@ -491,7 +542,12 @@ class _SignupscreenState extends State<Signupscreen> {
                       Icons.business_outlined,
                     ),
                   ],
-                  _passwordField(passwordController, "Password", true, Icons.lock,),
+                  _passwordField(
+                    passwordController,
+                    "Password",
+                    true,
+                    Icons.lock,
+                  ),
                   _passwordField(
                     confirmPasswordController,
                     "Confirm password",
@@ -500,17 +556,51 @@ class _SignupscreenState extends State<Signupscreen> {
                   ),
 
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Checkbox(
                         value: acceptedTerms,
                         onChanged: (v) {
-                          setState(() => acceptedTerms = v!);
+                          setState(() {
+                            acceptedTerms = v ?? false;
+                          });
                         },
                       ),
-                      const Expanded(
-                        child: Text(
-                          "I agree to the Terms and Privacy Policy",
-                          style: TextStyle(color: Colors.grey),
+                      Expanded(
+                        child: Wrap(
+                          children: [
+                            const Text(
+                              "I agree to the ",
+                              style: TextStyle(color: Colors.grey),
+                            ),
+
+                            GestureDetector(
+                              onTap: () => _openUrl(termsUrl),
+                              child: const Text(
+                                "Terms",
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+
+                            const Text(
+                              " and ",
+                              style: TextStyle(color: Colors.grey),
+                            ),
+
+                            GestureDetector(
+                              onTap: () => _openUrl(privacyUrl),
+                              child: const Text(
+                                "Privacy Policy",
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -526,10 +616,7 @@ class _SignupscreenState extends State<Signupscreen> {
                         gradient: const LinearGradient(
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
-                          colors: [
-                            Color(0xFF38B6F6),
-                            Color(0xFF4C8FFB),
-                          ],
+                          colors: [Color(0xFF38B6F6), Color(0xFF4C8FFB)],
                         ),
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
@@ -549,32 +636,32 @@ class _SignupscreenState extends State<Signupscreen> {
                           child: Center(
                             child: isLoading
                                 ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: Colors.black,
-                              ),
-                            )
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.black,
+                                    ),
+                                  )
                                 : const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  "Create account",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.w600,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        "Create account",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      SizedBox(width: 7),
+                                      Icon(
+                                        Icons.arrow_forward,
+                                        size: 16,
+                                        color: Colors.black,
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                SizedBox(width: 7),
-                                Icon(
-                                  Icons.arrow_forward,
-                                  size: 16,
-                                  color: Colors.black,
-                                ),
-                              ],
-                            ),
                           ),
                         ),
                       ),
@@ -618,11 +705,12 @@ class _SignupscreenState extends State<Signupscreen> {
       ),
     );
   }
+
   Widget _dateInput(
-      TextEditingController controller,
-      String hint,
-      IconData icon,
-      ) {
+    TextEditingController controller,
+    String hint,
+    IconData icon,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
@@ -637,22 +725,22 @@ class _SignupscreenState extends State<Signupscreen> {
         },
         onTap: () async {
           final DateTime? pickedDate = await showDatePicker(
-          context: context,
-          initialDate: selectedDate ?? DateTime.now(),
-          firstDate: DateTime(1900),
-          lastDate: DateTime(2100),
-          builder: (context, child) {
-          return Theme(
-          data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.dark(
-          primary: Colors.blueAccent,
-          surface: Color(0xFF121A2F),
-          onSurface: Colors.white,
-          ),
-          ),
-          child: child!,
-          );
-          },
+            context: context,
+            initialDate: selectedDate ?? DateTime.now(),
+            firstDate: DateTime(1900),
+            lastDate: DateTime(2100),
+            builder: (context, child) {
+              return Theme(
+                data: Theme.of(context).copyWith(
+                  colorScheme: const ColorScheme.dark(
+                    primary: Colors.blueAccent,
+                    surface: Color(0xFF121A2F),
+                    onSurface: Colors.white,
+                  ),
+                ),
+                child: child!,
+              );
+            },
           );
 
           if (pickedDate != null) {
@@ -661,7 +749,7 @@ class _SignupscreenState extends State<Signupscreen> {
 
               // Display format: 2026-08-14
               controller.text =
-              "${pickedDate.year}-"
+                  "${pickedDate.year}-"
                   "${pickedDate.month.toString().padLeft(2, '0')}-"
                   "${pickedDate.day.toString().padLeft(2, '0')}";
             });
@@ -671,11 +759,7 @@ class _SignupscreenState extends State<Signupscreen> {
           hintText: hint,
           hintStyle: const TextStyle(color: Colors.grey),
 
-          prefixIcon: Icon(
-            icon,
-            color: Colors.blueAccent,
-            size: 22,
-          ),
+          prefixIcon: Icon(icon, color: Colors.blueAccent, size: 22),
 
           suffixIcon: const Icon(
             Icons.calendar_today,
@@ -693,27 +777,146 @@ class _SignupscreenState extends State<Signupscreen> {
 
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-              color: Colors.white.withOpacity(0.08),
-            ),
+            borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
           ),
 
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(
-              color: Colors.blueAccent,
-              width: 1.2,
-            ),
+            borderSide: const BorderSide(color: Colors.blueAccent, width: 1.2),
           ),
         ),
       ),
     );
   }
-  Widget _input(
-      TextEditingController controller,
-      String hint,
-      IconData icon,
-      ) {
+  Widget _addressInput() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: addressController,
+            style: const TextStyle(color: Colors.white),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return "Required";
+              }
+              return null;
+            },
+            onChanged: (value) async {
+              if (value.trim().length < 3) {
+                setState(() {
+                  addressSuggestions = [];
+                  showSuggestions = false;
+                });
+                return;
+              }
+
+              final results = await getAddressSuggestions(value);
+
+              if (!mounted) return;
+
+              setState(() {
+                addressSuggestions = results;
+                showSuggestions = results.isNotEmpty;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: "Address",
+              hintStyle: const TextStyle(color: Colors.grey),
+
+              prefixIcon: const Icon(
+                Icons.home_outlined,
+                color: Colors.blueAccent,
+                size: 22,
+              ),
+
+              filled: true,
+              fillColor: const Color(0xFF121A2F),
+
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: Colors.blueAccent,
+                  width: 1.2,
+                ),
+              ),
+            ),
+          ),
+
+          if (showSuggestions)
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF121A2F),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: addressSuggestions.length,
+                itemBuilder: (context, index) {
+                  final suggestion = addressSuggestions[index];
+
+                  return ListTile(
+                    leading: const Icon(
+                      Icons.location_on_outlined,
+                      color: Colors.blueAccent,
+                    ),
+                    title: Text(
+                      suggestion["mainText"] ?? "",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    subtitle: Text(
+                      suggestion["secondaryText"] ?? "",
+                      style: const TextStyle(
+                        color: Colors.grey,
+                      ),
+                    ),
+                    onTap: () {
+                      addressController.text =
+                          suggestion["text"] ?? "";
+
+                      setState(() {
+                        addressSuggestions = [];
+                        showSuggestions = false;
+                      });
+
+                      print(
+                        "Selected address: ${suggestion["text"]}",
+                      );
+
+                      print(
+                        "Place ID: ${suggestion["placeId"]}",
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+  Widget _input(TextEditingController controller, String hint, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
@@ -729,11 +932,7 @@ class _SignupscreenState extends State<Signupscreen> {
           hintText: hint,
           hintStyle: const TextStyle(color: Colors.grey),
 
-          prefixIcon: Icon(
-            icon,
-            color: Colors.blueAccent,
-            size: 22,
-          ),
+          prefixIcon: Icon(icon, color: Colors.blueAccent, size: 22),
 
           filled: true,
           fillColor: const Color(0xFF121A2F),
@@ -745,27 +944,23 @@ class _SignupscreenState extends State<Signupscreen> {
 
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-              color: Colors.white.withOpacity(0.08),
-            ),
+            borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
           ),
 
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(
-              color: Colors.blueAccent,
-              width: 1.2,
-            ),
+            borderSide: const BorderSide(color: Colors.blueAccent, width: 1.2),
           ),
         ),
       ),
     );
   }
+
   Widget _passwordField(
     TextEditingController controller,
     String hint,
     bool isMain,
-      IconData icon,
+    IconData icon,
   ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -784,10 +979,7 @@ class _SignupscreenState extends State<Signupscreen> {
           hintText: hint,
           hintStyle: const TextStyle(color: Colors.grey),
           filled: true,
-          prefixIcon: Icon(
-            icon,
-            color: Colors.blueAccent,
-          ),
+          prefixIcon: Icon(icon, color: Colors.blueAccent),
           fillColor: const Color(0xFF121A2F),
           suffixIcon: IconButton(
             icon: Icon(

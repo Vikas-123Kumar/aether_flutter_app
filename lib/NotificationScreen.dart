@@ -154,6 +154,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
       backgroundColor: const Color(0xFF0C101B),
       appBar: AppBar(
         elevation: 0,
+        centerTitle: false,
+        titleSpacing: 8,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
